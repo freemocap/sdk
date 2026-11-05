@@ -2,3 +2,10 @@
 @import './components/viewport3d/scene/viewport-overlay.css';
 @import 'react-grid-layout/css/styles.css';
 @import 'react-resizable/css/styles.css';
+
+.sdk-bottom-log-panel {display:flex; flex-direction:column; min-height:0; flex-shrink:0; background:var(--color-bg-secondary); color:var(--color-text-primary); border-top:1px solid var(--color-surface-active);}
+.sdk-log-resize {height:5px; flex-shrink:0; cursor:ns-resize; touch-action:none; background:var(--color-surface-active);}
+.sdk-log-resize:focus-visible {outline:2px solid var(--color-text-primary);}
+.sdk-log-heading {display:flex; justify-content:space-between; align-items:center; padding:3px 10px; font-size:12px; flex-shrink:0;}
+.sdk-log-heading button {font:inherit; color:inherit; background:transparent; border:1px solid var(--color-surface-active); border-radius:4px; padding:2px 6px; cursor:pointer;}
+.sdk-log-content {flex:1; min-height:0; overflow:hidden;}

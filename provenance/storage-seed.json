@@ -1,0 +1,15 @@
+{
+  "purpose": "Small standalone storage primitives for application-owned fresh project schemas",
+  "source_repository": "https://github.com/freemocap/skellytracker",
+  "source_revision": "03633062c209d9734ef007c3beb62b78d947c6e4",
+  "source_path": "tools/dlc_training/project_store.py",
+  "destination": "packages/server/freemocap_sdk/storage.py",
+  "adaptations": [
+    "No TrainingProject constructor, collection schema, migration or implicit mkdir",
+    "Typed ArtifactIdentity inventory with concurrent-change detection",
+    "Resolved containment check for portable relative paths",
+    "Nonblocking OS-owned writer lock",
+    "Caller-validated staged directory publication without overwriting revisions"
+  ],
+  "verification": "packages/server/tests/test_storage.py: 10 tests passed on Windows with SDK isolated environment; application acceptance is separate"
+}

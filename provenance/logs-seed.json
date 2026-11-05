@@ -1,0 +1,20 @@
+{
+  "source_repository": "https://github.com/freemocap/freemocap",
+  "source_revision": "3ae9842d896085e7d05603e279fa0a53502122c1",
+  "source_paths": [
+    "freemocap-ui/src/components/log-terminal/LogTerminal.tsx",
+    "freemocap-ui/src/services/server/server-helpers/log-store.ts",
+    "freemocap-ui/src/layout/content/BottomPanelContent.tsx",
+    "freemocap-ui/src/layout/BasePanelLayout.tsx",
+    "freemocap/api/websocket/log_relay.py"
+  ],
+  "adaptations": [
+    "Inject LogStore instead of Core ServerContextProvider; local SDK translations",
+    "Keep bounded memory, small idle-persisted tail, polling and variable-height virtualization",
+    "Application-scoped optional persistence key and stable relay record ID for reconnect deduplication",
+    "Standalone bottom region with resize/collapse and no routing or Core stores",
+    "Standard Python logging.Handler with bounded history and independent subscriber queues",
+    "Application owns logger attachment/levels and worker logging; this does not replace Core multiprocessing IPC relay"
+  ],
+  "verification": "Four Python log tests; UI 36 passed and one external reference-recording skip; application native acceptance recorded separately"
+}

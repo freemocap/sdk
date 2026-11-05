@@ -2,7 +2,7 @@ import {build} from 'esbuild';
 import {readdir,mkdir} from 'node:fs/promises';
 import {resolve,join} from 'node:path';
 import {spawnSync} from 'node:child_process';
-const root=resolve('src/components/viewport3d');
+const root=resolve('src');
 const files=(await readdir(root,{recursive:true})).filter(path=>path.endsWith('.test.ts'));
 const out=resolve('../../.test-artifacts/ui-tests');
 await mkdir(out,{recursive:true});

@@ -3,6 +3,8 @@
 import {z} from 'zod';
 
 export const LogRecordSchema = z.object({
+    /** Stable relay identity deduplicates bounded history on reconnect. */
+    log_id: z.string().optional(),
     name: z.string(),
     msg: z.string().nullable().default(""),
     args: z.array(z.any()),
