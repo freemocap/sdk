@@ -13,6 +13,7 @@ import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import {CachedTimeline} from './CachedTimeline';
 
 interface PlaybackControlsProps {
+    showTimingNotice?: boolean;
     playbackReady?: boolean;
     isPlaying: boolean;
     currentTime: number;
@@ -59,6 +60,7 @@ function formatTimestamp(seconds: number, fps: number, format: "seconds" | "time
 }
 
 export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
+    showTimingNotice = true,
     playbackReady = true,
     isPlaying,
     currentTime,
@@ -323,7 +325,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
 
                 {/* Info & Settings Group */}
                 <div className="playback-controls-group-info-settings flex items-center gap-1 flow-row p-1 bg-middark br-2">
-                    <div className="flex pos-rel items-center onclick-tooltip-wrapper">
+                    {showTimingNotice && <div className="flex pos-rel items-center onclick-tooltip-wrapper">
                         <PromptTooltip
                             show={syncInfoOpen}
                             title="Recording Playback Timing Issue"
@@ -341,8 +343,7 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                             tooltipText={t("syncInfo")}
                             tooltipPosition="pos-top"
                         />
-                    </div>
-
+                    </div>}
                     <div className="playback-settings-button-opener flex pos-rel items-center onclick-tooltip-wrapper">
                         <IconButton
                             icon="settings-icon"

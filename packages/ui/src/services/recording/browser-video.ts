@@ -7,9 +7,18 @@ export class BrowserVideo {
     private converted = false;
     private generation = 0;
     private closed = false;
+    private presentationHandle: number | null = null;
+    /** Browser-confirmed presentation time, never the requested seek target. */
+    presentedTime: number | null = null;
     constructor(readonly element: HTMLVideoElement, private readonly url: string,
         private readonly duration: number, private readonly fail: (error: Error) => void) {}
     async open(time: number): Promise<void> {
+        const presented = (_now: number, metadata: VideoFrameCallbackMetadata): void => {
+            if (this.closed) return;
+            this.presentedTime = metadata.mediaTime;
+            this.presentationHandle = this.element.requestVideoFrameCallback(presented);
+        };
+        this.presentationHandle = this.element.requestVideoFrameCallback(presented);
         this.element.preload = 'auto';
         this.element.muted = true;
         const ready = this.waitFor('loadeddata');
@@ -33,6 +42,7 @@ export class BrowserVideo {
             time >= buffered.start(i) && time < buffered.end(i)).some(Boolean);
         if (this.converted && !available) {await this.restart(time); return;}
         if (Math.abs(this.element.currentTime - time) < 0.001) return;
+        this.presentedTime = null;
         const ready = this.waitFor('seeked');
         this.element.currentTime = time;
         await ready;
@@ -54,6 +64,7 @@ export class BrowserVideo {
         });
     }
     private async restart(time: number): Promise<void> {
+        this.presentedTime = null;
         this.abort.abort(); this.abort = new AbortController();
         const signal = this.abort.signal;
         const generation = ++this.generation;
@@ -111,6 +122,8 @@ export class BrowserVideo {
     }
     close(): void {
         this.closed = true; this.abort.abort(); this.element.pause();
+        if (this.presentationHandle !== null) this.element.cancelVideoFrameCallback(this.presentationHandle);
+        this.presentedTime = null;
         this.element.removeAttribute('src'); this.element.load();
         if (this.objectUrl) URL.revokeObjectURL(this.objectUrl);
     }

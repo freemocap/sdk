@@ -5,10 +5,10 @@ import {PlaybackResources, useRecordingBundle, type RecordingSelection} from './
 
 import translations from './i18n/i18n';
 
-export interface PlaybackWorkspaceProps {baseUrl: string; recording: RecordingSelection | null}
+export interface PlaybackWorkspaceProps {baseUrl: string; recording: RecordingSelection | null; showTimingNotice?: boolean}
 
 /** Core's playback presentation, with explicit endpoint and selection inputs. */
-export function PlaybackWorkspace({baseUrl, recording}: PlaybackWorkspaceProps) {
+export function PlaybackWorkspace({baseUrl, recording, showTimingNotice}: PlaybackWorkspaceProps) {
     const resources = useRecordingBundle(baseUrl, recording);
     const {bundle} = resources;
     const [selectedSource, setSelectedSource] = useState<string | null>(null);
@@ -21,7 +21,7 @@ export function PlaybackWorkspace({baseUrl, recording}: PlaybackWorkspaceProps) 
             <div className="freemocap-playback-workspace flex flex-col flex-1 min-h-0" style={{height: '100%', minHeight: 320}}>
                 {resources.loading && <p role="status">Loading recording…</p>}
                 {resources.error && <p role="alert">{resources.error}</p>}
-                <RecordingPlaybackSession recording={recording} videos={videos}
+                <RecordingPlaybackSession recording={recording} videos={videos} showTimingNotice={showTimingNotice}
                     availableSources={availableSources} selectedSource={selectedSource} setSelectedSource={setSelectedSource}/>
             </div>
         </PlaybackResources.Provider>

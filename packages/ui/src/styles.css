@@ -9,3 +9,39 @@
 .sdk-log-heading {display:flex; justify-content:space-between; align-items:center; padding:3px 10px; font-size:12px; flex-shrink:0;}
 .sdk-log-heading button {font:inherit; color:inherit; background:transparent; border:1px solid var(--color-surface-active); border-radius:4px; padding:2px 6px; cursor:pointer;}
 .sdk-log-content {flex:1; min-height:0; overflow:hidden;}
+
+.sdk-recording-browser {display:flex; flex-direction:column; min-width:0; min-height:0; gap:6px; padding:6px; border-radius:6px; background:var(--color-bg-secondary); color:var(--color-text-primary);}
+.sdk-browser-actions,.sdk-browser-sort {display:flex; align-items:center; flex-wrap:wrap; gap:4px;}
+.sdk-browser-actions:empty {display:none;}
+.sdk-browser-location {margin:0; font-size:11px; color:var(--color-text-muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+.sdk-browser-list {display:flex; flex-direction:column; gap:5px; min-height:0;}
+.sdk-browser-row {border:1px solid var(--color-border-secondary); border-radius:5px; min-width:0; width:100%; padding:0;}
+.sdk-browser-row.is-active {background:var(--color-bg-primary); border-color:var(--color-info);}
+.sdk-browser-row-heading {display:flex; align-items:flex-start; min-width:0; width:100%;}
+.sdk-browser-select {display:flex; flex-direction:column; align-items:flex-start; flex:1; min-width:0; padding:9px; gap:5px; color:inherit; border:0; background:transparent; text-align:left; cursor:pointer;}
+.sdk-browser-select:focus-visible,.sdk-browser-expand:focus-visible {outline:2px solid var(--color-info); outline-offset:-2px;}
+.sdk-browser-name {font-size:13px; font-weight:600; max-width:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+.sdk-browser-row.is-active .sdk-browser-name {color:var(--color-info);}
+.sdk-browser-subtitle {font-size:12px; color:var(--color-text-muted); max-width:100%; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;}
+.sdk-browser-metadata {display:flex; gap:5px; flex-wrap:wrap; color:var(--color-text-muted); font-size:11px;}
+.sdk-browser-metadata:empty {display:none;}
+.sdk-browser-status,.sdk-browser-select time {font-size:11px; color:var(--color-text-muted);}
+.sdk-browser-status.success {color:var(--color-success);} .sdk-browser-status.warning {color:var(--color-warning);} .sdk-browser-status.error,.sdk-browser-error {color:var(--color-error);}
+.sdk-browser-expand {border:0; background:transparent; color:var(--color-text-muted); cursor:pointer; padding:9px 6px; flex-shrink:0;}
+.sdk-browser-details {margin:0; padding:8px; border-top:1px solid var(--color-border-secondary); font-size:11px; display:flex; flex-direction:column; gap:7px;}
+.sdk-browser-details dt {color:var(--color-text-muted);} .sdk-browser-details dd {margin:2px 0 0; overflow-wrap:anywhere; user-select:text;}
+.sdk-browser-empty {padding:14px 8px; font-size:12px; color:var(--color-text-muted); text-align:center;}
+
+.sdk-server-monitor {min-width:0; width:100%; position:relative;}
+.sdk-server-monitor .connection-status-button-opener {width:100%; min-width:0;}
+.sdk-server-monitor .sdk-connection-dropdown {position:absolute !important; top:calc(100% + 4px) !important; left:0 !important; z-index:1000 !important; min-width:min(300px,calc(100vw - 24px)) !important; max-width:min(360px,calc(100vw - 24px)) !important;}
+.sdk-connection-status {display:flex; align-items:center; gap:7px; font-size:13px; padding:4px;}
+.sdk-connection-dot {width:8px; height:8px; border-radius:50%; background:var(--color-warning);}
+.sdk-connection-dot.is-connected {background:var(--color-success);}
+.sdk-connection-details {margin:0; padding:5px; display:flex; flex-direction:column; gap:7px; font-size:12px;}
+.sdk-connection-details dt {color:var(--color-text-muted);}
+.sdk-connection-details dd {margin:2px 0 0; overflow-wrap:anywhere; user-select:text;}
+.sdk-resize-handle { flex-shrink: 0; background: var(--color-surface-active); touch-action: none; }
+.sdk-resize-handle[data-panel-group-direction="horizontal"] { width: 6px; cursor: col-resize; }
+.sdk-resize-handle[data-panel-group-direction="vertical"] { height: 6px; cursor: row-resize; }
+.sdk-resize-handle:hover, .sdk-resize-handle:focus-visible { background: var(--color-primary, #8675e9); outline: none; }

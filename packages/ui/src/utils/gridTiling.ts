@@ -94,7 +94,7 @@ export function tilingFromColumns(n: number, cols: number): Tiling {
 /**
  * Build a react-grid-layout layout from a tiling and item IDs.
  */
-export function buildLayout(ids: string[], tiling: Tiling, gridCols: number): LayoutItem[] {
+export function buildLayout(ids: string[], tiling: Tiling, gridCols: number, rowSpan = 1): LayoutItem[] {
     if (ids.length === 0) return [];
 
     const colSpan = Math.floor(gridCols / tiling.cols);
@@ -102,9 +102,9 @@ export function buildLayout(ids: string[], tiling: Tiling, gridCols: number): La
     return ids.map((id, i) => ({
         i: id,
         x: (i % tiling.cols) * colSpan,
-        y: Math.floor(i / tiling.cols),
+        y: Math.floor(i / tiling.cols) * rowSpan,
         w: colSpan,
-        h: 1,
+        h: rowSpan,
         minW: 1,
         minH: 1,
     }));

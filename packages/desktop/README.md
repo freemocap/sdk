@@ -22,6 +22,12 @@ Run the SDK packaging command with ignored output/scratch directories:
 python -m freemocap_sdk.bundle --entrypoint desktop_entry.py --name application-backend --output <backend-dist> --work <build-scratch>
 ```
 
+For application-owned package resources, append `--collect-data your_package`.
+Repeat the option for additional packages. This forwards PyInstaller's package
+data collection option [@pyinstallerData2026]; applications retain ownership of
+the resource contents and runtime loading. Only request packages whose data
+belongs in the distributed backend.
+
 The output is `<backend-dist>/application-backend/`, containing the executable and its runtime dependencies. PyInstaller's one-folder distribution includes the interpreter; the end user does not install Python. Builds target the OS and architecture used to build them. Console mode preserves the control pipes; the Rust launcher hides the console on Windows. [@pyinstallerModes2026]
 
 Include that **whole directory** in Tauri `bundle.resources`, mapping it to `backend/`. Resolve it through `app.path().resource_dir()`, not the current working directory. A resource mapping preserves the runtime directory structure. We use this instead of the single-binary `externalBin` option. [@tauriResources2026; @tauriSidecar2026]

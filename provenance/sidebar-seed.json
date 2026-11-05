@@ -1,0 +1,20 @@
+{
+  "source_repository": "https://github.com/freemocap/freemocap",
+  "source_revision": "3ae9842d896085e7d05603e279fa0a53502122c1",
+  "source_paths": [
+    "freemocap-ui/src/components/playback/RecordingBrowser.tsx",
+    "freemocap-ui/src/components/playback/RecordingBrowserSection.tsx",
+    "freemocap-ui/src/components/control-panels/server-connection/ServerConnectionStatus.tsx",
+    "freemocap-ui/src/components/ui-components/DropdownButton.tsx",
+    "freemocap-ui/src/layout/content/SidePanelContent.tsx"
+  ],
+  "adaptations": [
+    "Recording toolbar, filters, multi-field sorting, compact selected metadata rows and expandable details use injected entries/actions",
+    "Remove Core Redux, Electron, server IO, processing status and legacy-import dependencies",
+    "Explicit timestamps replace filename date inference; unknown metadata stays unknown",
+    "Server monitor uses supplied actual WebSocket state and separate optional HTTP/process information",
+    "Do not expose process launch/stop or Core host/port defaults in consuming apps",
+    "Dropdown dismissal retains outside-click behavior and adds Escape/focus return",
+    "Bottom logs header optional and absent by default; static playback timing notice can be disabled without suppressing validation"
+  ]
+}

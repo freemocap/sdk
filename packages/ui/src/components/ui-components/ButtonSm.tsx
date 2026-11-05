@@ -11,6 +11,7 @@ interface ButtonSmProps {
   rightSideIcon?: string;
   textColor?: string;
   title?: string;
+  ariaExpanded?: boolean;
   disabled?: boolean;
   className?: string;
   textClass?: string;
@@ -27,6 +28,7 @@ const ButtonSm: React.FC<ButtonSmProps> = ({
   rightSideIcon = "",
   textColor = "text-gray",
   title,
+  ariaExpanded,
   disabled = false,
   className = "",
   textClass = "",
@@ -78,6 +80,7 @@ const ButtonSm: React.FC<ButtonSmProps> = ({
     <button
       onClick={onClick}
       aria-label={title || tooltipText || text || undefined}
+      aria-expanded={ariaExpanded}
       title={title}
       disabled={disabled}
       className={clsx("button-sm-group gap-1 br-1 button items-center sm fit-content flex-inline text-left items-center text-black", buttonType, rightSideIcon === 'dropdown' ? '' : rightSideIcon, className)}

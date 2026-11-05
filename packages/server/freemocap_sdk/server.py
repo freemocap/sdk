@@ -53,7 +53,8 @@ def create_app(*, title: str, routers: Sequence[APIRouter] = (),
     app = FastAPI(title=title, lifespan=lifespan)
     if allowed_origins:
         app.add_middleware(CORSMiddleware, allow_origins=list(allowed_origins),
-                           allow_methods=["*"], allow_headers=["*"])
+                           allow_methods=["*"], allow_headers=["*"],
+                           expose_headers=["ETag", "Accept-Ranges", "Content-Range"])
     for router in routers:
         app.include_router(router)
 

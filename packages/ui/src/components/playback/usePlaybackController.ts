@@ -32,6 +32,8 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const currentFrameRef = useRef(0);
     const measuredFps = useRef<number | null>(null);
     const seekGeneration = useRef(0);
+    const seeking = useRef(false);
+    const pendingPresentation = useRef<number | null>(null);
     const onFrameChangeRef = useRef(onFrameChange); onFrameChangeRef.current = onFrameChange;
     const videosRef = useRef(videos); videosRef.current = videos;
     const source = Object.entries(bundle?.videos.sources ?? {}).find(([, value]) => value.videos.some(video => video.streamUrl === videos[0]?.streamUrl));
@@ -49,6 +51,8 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
 
     useEffect(() => {
         setIsPlaying(false); setVideosReady(0); setError(null); setErroredVideos(new Set());
+        seeking.current = false; ++seekGeneration.current;
+        pendingPresentation.current = currentFrameRef.current;
         setRequestedFrame(currentFrameRef.current);
         if (!totalFrames || !videosRef.current.length) return;
         if (source && !source[1].valid) {fail(new Error('Video group has incompatible frame counts. See recording resource errors.')); return;}
@@ -80,15 +84,17 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
 
     const seek = useCallback(async (frame: number): Promise<void> => {
         const generation = ++seekGeneration.current;
+        seeking.current = true;
         setIsPlaying(false);
         const target = Math.max(0, Math.min(Math.round(frame), totalFrames - 1));
-        currentFrameRef.current = target; setRequestedFrame(target); setCurrentFrame(target);
-        onFrameChangeRef.current?.(target);
+        pendingPresentation.current = target;
+        setRequestedFrame(target);
         const current = players.current;
         current.forEach(player => player.element.pause());
         await Promise.all(current.map(player => player.seek(target / fps))).catch(failure => {
             if (players.current === current && generation === seekGeneration.current) fail(failure);
         });
+        if (players.current === current && generation === seekGeneration.current) seeking.current = false;
     }, [fps, totalFrames, fail]);
 
     useEffect(() => {
@@ -107,27 +113,38 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         let lastUi = 0;
         let startTime = performance.now();
         let count = 0;
-        const tick = (now: number, metadata: VideoFrameCallbackMetadata): void => {
-            const frame = isPlaying ? Math.min(totalFrames - 1, Math.max(0, Math.round(metadata.mediaTime * fps))) : currentFrameRef.current;
+        let lastPresentedFrame = -1;
+        const tick = (now: number): void => {
+            const time = players.current[0]?.presentedTime;
+            if (time === null || time === undefined) {handle = requestAnimationFrame(tick); return;}
+            const frame = Math.min(totalFrames - 1, Math.max(0, Math.round(time * fps)));
+            if (seeking.current || (pendingPresentation.current !== null && pendingPresentation.current !== frame) || players.current.length !== videosRef.current.length || players.current.some(player => player.presentedTime === null ||
+                Math.round(player.presentedTime * fps) !== frame)) {
+                handle = requestAnimationFrame(tick);
+                return;
+            }
+            pendingPresentation.current = null;
+            if (frame === lastPresentedFrame) {handle = requestAnimationFrame(tick); return;}
+            lastPresentedFrame = frame;
             currentFrameRef.current = frame;
             onFrameChangeRef.current?.(frame);
-            const seconds = Math.floor(metadata.mediaTime);
+            const seconds = Math.floor(time);
             const timecode = [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, seconds % 60,
-                Math.floor((metadata.mediaTime - seconds) * fps)].map(value => String(value).padStart(2, '0')).join(':');
-            const timestamp = settingsRef.current.timestampFormat === 'timecode' ? timecode : `${metadata.mediaTime.toFixed(3)} s`;
-            frameLabels.current.forEach(label => label.draw(`~F${frame} | ${timestamp}`));
+                Math.floor((time - seconds) * fps)].map(value => String(value).padStart(2, '0')).join(':');
+            const timestamp = settingsRef.current.timestampFormat === 'timecode' ? timecode : `${time.toFixed(3)} s`;
+            frameLabels.current.forEach(label => label.draw(`F${leader?.timeline.frame_numbers[frame] ?? frame} | ${timestamp}`));
             if (isPlaying) {
                 count++;
                 if (now - startTime >= 500) {measuredFps.current = count * 1000 / (now - startTime); count = 0; startTime = now;}
             }
-            if (now - lastUi >= 100) {setCurrentFrame(frame); lastUi = now;}
-            handle = leaderElement.requestVideoFrameCallback(tick);
+            if (!isPlaying || now - lastUi >= 100) {setCurrentFrame(frame); lastUi = now;}
+            handle = requestAnimationFrame(tick);
         };
         const ended = (): void => {void seek(isLooping ? 0 : totalFrames - 1).then(() => {if (isLooping) setIsPlaying(true);});};
         leaderElement.addEventListener('ended', ended);
-        handle = leaderElement.requestVideoFrameCallback(tick);
-        return () => {leaderElement.cancelVideoFrameCallback(handle); leaderElement.removeEventListener('ended', ended);};
-    }, [videosReady, isPlaying, isLooping, fps, totalFrames, seek]);
+        handle = requestAnimationFrame(tick);
+        return () => {cancelAnimationFrame(handle); leaderElement.removeEventListener('ended', ended);};
+    }, [videosReady, isPlaying, isLooping, fps, totalFrames, seek, leader]);
 
     const setVideoRef = useCallback((id: string, element: HTMLVideoElement | null): void => {
         if ((elements.current.get(id) ?? null) === element) return;
@@ -138,7 +155,16 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         if (element) frameLabels.current.set(id, new PlaybackLabel(element)); else frameLabels.current.delete(id);
     }, []);
     const getDisplayFps = useCallback(() => measuredFps.current, []);
-    const getRecordingTime = useCallback(() => leader?.timeline.timestamps_s[currentFrameRef.current] ?? null, [leader]);
+    const getRecordingTime = useCallback(() => {
+        const current = players.current;
+        if (seeking.current || !current.length || current.length !== videosRef.current.length) return null;
+        const time = current[0].presentedTime;
+        if (time === null) return null;
+        const index = Math.min(totalFrames - 1, Math.max(0, Math.round(time * fps)));
+        if (pendingPresentation.current !== null && pendingPresentation.current !== index) return null;
+        if (current.some(player => player.presentedTime === null || Math.round(player.presentedTime * fps) !== index)) return null;
+        return leader?.timeline.timestamps_s[index] ?? null;
+    }, [leader, fps, totalFrames]);
     const setPlaybackRun = useCallback((run: PlaybackRun): void => {
         const saved = new Map(run.media.map(item => [JSON.stringify([item.video_source, item.video_filename]), item]));
         setMedia((bundle?.media ?? []).map(item => saved.get(JSON.stringify([item.video_source, item.video_filename])) ?? item));
@@ -158,7 +184,8 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     }, [isPlaying, totalFrames, seek, playbackReady]);
     useEffect(() => {
         const onKey = (event: KeyboardEvent): void => {
-            if (event.target instanceof HTMLElement && (event.target.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(event.target.tagName))) return;
+            if (event.target instanceof HTMLElement && (event.target.isContentEditable ||
+                event.target.closest('[role="separator"]') || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(event.target.tagName))) return;
             switch (event.key) {
                 case ' ': event.preventDefault(); handlePlayPause(); break;
                 case 'ArrowLeft': event.preventDefault(); seek(currentFrameRef.current - 1); break;

@@ -13,6 +13,8 @@ def main() -> None:
     parser.add_argument("--name", required=True, help="Backend directory and executable name")
     parser.add_argument("--output", type=Path, required=True, help="Ignored Tauri binaries directory")
     parser.add_argument("--work", type=Path, required=True, help="Ignored build scratch directory")
+    parser.add_argument("--collect-data", action="append", default=[], metavar="PACKAGE",
+                        help="Include package data files; repeat for multiple packages")
     args = parser.parse_args()
     if not args.entrypoint.is_file():
         parser.error("Entrypoint does not exist")
@@ -25,6 +27,8 @@ def main() -> None:
                     "--workpath", str((args.work / "work").resolve()),
                     "--specpath", str(args.work.resolve()),
                     "--collect-submodules", "uvicorn", "--collect-submodules", "websockets",
+                    # Preserve package-relative resources [@pyinstallerData2026].
+                    *[arg for package in args.collect_data for arg in ("--collect-data", package)],
                     str(args.entrypoint.resolve())], check=True)
 
 

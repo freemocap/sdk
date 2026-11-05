@@ -1,6 +1,6 @@
 import React, {useCallback, useState} from 'react';
 import {useTranslation} from 'react-i18next';
-import {Panel, PanelGroup, PanelResizeHandle} from 'react-resizable-panels';
+import {ResizablePanel as Panel, ResizablePanelGroup as PanelGroup, ResizableHandle as PanelResizeHandle} from '@/layout/ResizablePanels';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 import {GridSettingsOverlay} from '@/components/ui-components/GridSettingsOverlay';
 import {SyncedVideoPlayer} from './SyncedVideoPlayer';
@@ -13,9 +13,10 @@ import {usePlaybackResources, type CameraSettings, type RecordingSelection, type
 import type {VideoEntry} from '@/services/recording/browser-video';
 
 interface Props {recording: RecordingSelection | null; videos: VideoEntry[];
+    showTimingNotice?: boolean;
     availableSources: PlaybackBundle['videos']['sources'] | null; selectedSource: string | null;
     setSelectedSource: (source: string) => void}
-const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, availableSources, selectedSource, setSelectedSource}) => {
+const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, availableSources, selectedSource, setSelectedSource, showTimingNotice}) => {
     const {t} = useTranslation();
     const {bundle, reloadManifest} = usePlaybackResources();
     const [settings, setSettings] = useState<CameraSettings>({columns: null, show3dView: true, layoutDirection: 'horizontal'});
@@ -103,14 +104,7 @@ const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, available
                                         </div>
                                     </Panel>
 
-                                     <PanelResizeHandle
-                                               className="resizable-component"
-                                               style={{
-                                                 width: "4px",
-                                                 cursor: "col-resize",
-                                                 backgroundColor: "var(--color-surface-active)",
-                                               }}
-                                             />
+                                    <PanelResizeHandle aria-label="Resize media and 3D panes"/>
 
                                     <Panel defaultSize={40} minSize={10}>
                                         <div className="h-full">
@@ -141,6 +135,7 @@ const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, available
 
                         {controller.error && <p role="alert" className="text-error">{controller.error}</p>}
                         <PlaybackControls
+                            showTimingNotice={showTimingNotice ?? (recording !== null && videos.length > 0)}
                             playbackReady={playbackReady}
                             isPlaying={controller.isPlaying}
                             currentTime={controller.currentTime}

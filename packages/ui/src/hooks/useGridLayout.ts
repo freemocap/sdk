@@ -14,6 +14,7 @@ const DEFAULT_MARGIN: [number, number] = [4, 4];
 const DEFAULT_MIN_ROW_HEIGHT = 30;
 const DEFAULT_WIDTH = 800;
 const DEFAULT_HEIGHT = 600;
+const TILE_ROW_SPAN = 12;
 
 // ── Types ───────────────────────────────────────────────────────────────────
 
@@ -31,7 +32,7 @@ export interface UseGridLayoutOptions {
     /** If true, observe the PARENT of containerRef (avoids ResizeObserver feedback
      *  loops when the container has percentage dimensions). Default: true */
     measureParent?: boolean;
-    /** Minimum row height in pixels. Default: 30 */
+    /** Minimum initial tile-row height in pixels. Default: 30 */
     minRowHeight?: number;
     /** Additional dependencies that trigger user-override reset. When any change,
      *  drag/resize overrides are discarded. */
@@ -58,6 +59,7 @@ export interface UseGridLayoutResult {
     gridConfig: {
         cols: number;
         rowHeight: number;
+        maxRows: number;
         margin: [number, number];
         containerPadding: [number, number];
     };
@@ -131,22 +133,24 @@ export function useGridLayout(options: UseGridLayoutOptions): UseGridLayoutResul
 
     const layout = useMemo(() => {
         if (userLayout !== null) return userLayout;
-        return buildLayout(itemIds, tiling, gridCols);
+        return buildLayout(itemIds, tiling, gridCols, TILE_ROW_SPAN);
     }, [itemIds, tiling, gridCols, userLayout]);
 
     // ── Row height & grid config ────────────────────────────────────────────
 
+    const gridRows = tiling.rows * TILE_ROW_SPAN;
     const rowHeight = useMemo(() => {
-        const totalMargin = (tiling.rows - 1) * margin[1];
-        return Math.max(minRowHeight, (height - totalMargin) / tiling.rows);
-    }, [height, tiling.rows, margin, minRowHeight]);
+        const totalMargin = (gridRows - 1) * margin[1];
+        return Math.max(1, (Math.max(height, tiling.rows * minRowHeight) - totalMargin) / gridRows);
+    }, [height, tiling.rows, gridRows, margin, minRowHeight]);
 
     const gridConfig = useMemo(() => ({
         cols: gridCols,
         rowHeight,
+        maxRows: gridRows,
         margin,
         containerPadding: [0, 0] as [number, number],
-    }), [gridCols, rowHeight, margin]);
+    }), [gridCols, gridRows, rowHeight, margin]);
 
     // ── Drag / resize handlers ──────────────────────────────────────────────
 
@@ -180,7 +184,7 @@ export function useGridLayout(options: UseGridLayoutOptions): UseGridLayoutResul
             }));
         } else {
             const maxX = gridCols - newItem.w;
-            const maxY = tiling.rows - newItem.h;
+            const maxY = gridRows - newItem.h;
             setUserLayout(preDrag.map((l) => {
                 if (l.i === newItem.i) {
                     return {
@@ -192,7 +196,7 @@ export function useGridLayout(options: UseGridLayoutOptions): UseGridLayoutResul
                 return l;
             }));
         }
-    }, [tiling.rows, gridCols]);
+    }, [gridRows, gridCols]);
 
     const handleResizeStop = useCallback((newLayout: Layout) => {
         setUserLayout([...newLayout]);

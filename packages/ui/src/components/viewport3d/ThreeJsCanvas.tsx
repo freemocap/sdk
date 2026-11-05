@@ -224,6 +224,30 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
     };
   }, [isLive, subscribeToKeypoints, subscribeToModelFrames]);
 
+  // Frame a newly loaded recording once the worker scene is mounted. Use actual
+  // model extent (not just a rigid body's single origin), then leave user orbit
+  // and zoom alone for the rest of that model selection.
+  useEffect(() => {
+    if (isLive) return;
+    let fitted = false;
+    const reset = subscribeToModels(() => { fitted = false; });
+    const receive = (event: MessageEvent) => {
+      if (fitted || event.data.type !== 'stats') return;
+      const pointSources = (getLatestModelFrames() ?? []).flatMap(model => {
+        const points = model.landmarks ?? model.segmentOrigins;
+        return points ? [points] : [];
+      });
+      const points = {pointNames: pointSources.flatMap(source => [...source.names]), pointSources};
+      if (!hasVisibleKeypoints(points)) return;
+      VIEWPORT_WORKER.postMessage({type: 'fitCamera', data: {
+        pointNames: points.pointNames, interleaved: cameraFitWorkspace.packFrame(points),
+      }});
+      fitted = true;
+    };
+    VIEWPORT_WORKER.addEventListener('message', receive);
+    return () => {reset(); VIEWPORT_WORKER.removeEventListener('message', receive);};
+  }, [isLive, subscribeToModels, getLatestModelFrames, cameraFitWorkspace]);
+
   const handleFit = useCallback(() => {
     // Frame every RECONSTRUCTED thing — a person and a board both belong in the shot —
     // rather than the raw keypoint cloud, whose untriangulated outliers would blow the

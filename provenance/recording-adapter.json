@@ -1,0 +1,14 @@
+{
+  "source_repository": "freemocap",
+  "source_revision": "3ae9842d896085e7d05603e279fa0a53502122c1",
+  "sources": [
+    "freemocap/api/http/playback/playback_router.py: stream_video, get_recording_parquet, get_recording_bundle",
+    "freemocap/api/http/recordings/resources_router.py"
+  ],
+  "sdk_contracts": [
+    "packages/client/src/recording/playback-data.ts",
+    "packages/client/src/recording/playback-parquet.ts",
+    "packages/client/tools/generate-recording-fixture.py"
+  ],
+  "adaptation": "Application-resolved immutable recording resources, established tall display columns and quoted revision ETag; native range video playback and retained worker-decoded numerical arrays. Application schema, geometry conversion and publication ownership remain injected. No Core imports or legacy directory reconstruction."
+}
