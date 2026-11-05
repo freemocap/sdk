@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import {Group, Vector3} from 'three';
 import {ModelDefinitionSchema} from '@freemocap/client';
 import type {ResolvedModelFrame} from '@freemocap/client';
-import {prepareModels} from './prepared-models';
+import {prepareModels, preparedModelsMatch} from './prepared-models';
 import {prepareAttachedLines} from './prepared-attached-lines';
 import {prepareAttachedSurfaces, writeAttachedSurfaces, disposeAttachedSurfaces} from './prepared-attached-surfaces';
 
@@ -38,4 +38,26 @@ test('malformed surface indices, opacity, and coordinates are rejected by the se
         const invalid=structuredClone(raw);change(invalid.presentation.attached_lines[0].surfaces[0]);
         assert.equal(ModelDefinitionSchema.safeParse(invalid).success,false);
     }
+});
+
+
+test('complementary quality groups switch visible surfaces without rebuilding geometry or leaving an empty frame', () => {
+    const definitions = new Map(['accepted', 'rejected'].map(id => [id, ModelDefinitionSchema.parse({...raw, model_id: id})]));
+    const frames: ResolvedModelFrame[] = [...definitions.keys()].map(modelId => ({modelId, instanceId: 0, fittedScaleMm: 1000,
+        segmentOrigins: {names: ['part'], data: Float32Array.from([10, 20, 30])},
+        rotations: {boneNames: ['part'], worldQuaternions: Float32Array.from([1, 0, 0, 0]), localQuaternions: new Float32Array()},
+        segmentLengths: {names: ['part'], data: Float32Array.from([100]), fittedScaleMm: 1000},
+        mappedKeypoints: null, landmarks: null, derived: {centerOfMass: null, xcom: null}}));
+    const group = new Group(), layout = prepareModels(frames, definitions);
+    const batches = prepareAttachedSurfaces(prepareAttachedLines(layout, 0), group);
+    const geometryIds = batches.map(batch => batch.meshes[0].geometry.id);
+    const scratch = new Float64Array(9);
+    for (const selected of [0, 1, 0, 1, 1, 0]) {
+        frames.forEach((frame, index) => frame.segmentOrigins!.data.set(index === selected ? [10, 20, 30] : [NaN, NaN, NaN]));
+        assert.equal(preparedModelsMatch(layout, frames, definitions), true);
+        batches.forEach((batch, index) => writeAttachedSurfaces(batch, frames[index], scratch));
+        assert.deepEqual(batches.map(batch => batch.meshes[0].visible), [selected === 0, selected === 1]);
+        assert.deepEqual(batches.map(batch => batch.meshes[0].geometry.id), geometryIds);
+    }
+    disposeAttachedSurfaces(batches);
 });
