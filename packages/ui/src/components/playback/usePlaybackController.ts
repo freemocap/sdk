@@ -1,4 +1,5 @@
 import {BrowserVideo, type VideoEntry} from '@/services/recording/browser-video';
+import {waitForSharedPresentation} from '@/services/recording/presentation-barrier';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {PlaybackSettings} from './SyncedVideoPlayer';
 import {PlaybackLabel} from '@/services/recording/playback-label';
@@ -82,7 +83,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         return () => {active = false; opened.forEach(player => player.close()); players.current = [];};
     }, [videoKey, totalFrames, duration, fps, recordingId, recordingParentDirectory, elementRevision, fail]);
 
-    const seek = useCallback(async (frame: number): Promise<void> => {
+    const seek = useCallback(async (frame: number): Promise<boolean> => {
         const generation = ++seekGeneration.current;
         seeking.current = true;
         setIsPlaying(false);
@@ -91,10 +92,21 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         setRequestedFrame(target);
         const current = players.current;
         current.forEach(player => player.element.pause());
-        await Promise.all(current.map(player => player.seek(target / fps))).catch(failure => {
-            if (players.current === current && generation === seekGeneration.current) fail(failure);
-        });
-        if (players.current === current && generation === seekGeneration.current) seeking.current = false;
+        const isCurrent = (): boolean => players.current === current && generation === seekGeneration.current;
+        try {
+            if (!current.length || current.length !== videosRef.current.length) return false;
+            await Promise.all(current.map(player => player.seek(target / fps)));
+            if (!await waitForSharedPresentation(() => current.map(player => player.presentedTime), target, fps, isCurrent)) return false;
+            // Publish the browser-confirmed shared target before any caller resumes media.
+            pendingPresentation.current = null;
+            currentFrameRef.current = target;
+            setCurrentFrame(target);
+            onFrameChangeRef.current?.(target);
+            return true;
+        } catch (failure) {
+            if (isCurrent()) fail(failure instanceof Error ? failure : new Error(String(failure)));
+            return false;
+        } finally {if (isCurrent()) seeking.current = false;}
     }, [fps, totalFrames, fail]);
 
     useEffect(() => {
@@ -140,7 +152,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
             if (!isPlaying || now - lastUi >= 100) {setCurrentFrame(frame); lastUi = now;}
             handle = requestAnimationFrame(tick);
         };
-        const ended = (): void => {void seek(isLooping ? 0 : totalFrames - 1).then(() => {if (isLooping) setIsPlaying(true);});};
+        const ended = (): void => {void seek(isLooping ? 0 : totalFrames - 1).then(ready => {if (ready && isLooping) setIsPlaying(true);});};
         leaderElement.addEventListener('ended', ended);
         handle = requestAnimationFrame(tick);
         return () => {cancelAnimationFrame(handle); leaderElement.removeEventListener('ended', ended);};
@@ -179,7 +191,10 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const handlePlayPause = useCallback((): void => {
         if (!playbackReady) return;
         if (isPlaying) setRequestedFrame(currentFrameRef.current);
-        else if (currentFrameRef.current >= totalFrames - 1) {void seek(0).then(() => setIsPlaying(true)); return;}
+        else if (currentFrameRef.current >= totalFrames - 1 || seeking.current || pendingPresentation.current !== null) {
+            const target = currentFrameRef.current >= totalFrames - 1 ? 0 : pendingPresentation.current ?? currentFrameRef.current;
+            void seek(target).then(ready => {if (ready) setIsPlaying(true);}); return;
+        }
         setIsPlaying(value => !value);
     }, [isPlaying, totalFrames, seek, playbackReady]);
     useEffect(() => {
