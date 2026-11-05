@@ -239,7 +239,8 @@ export function ThreeJsCanvas({calibration, pointCloud, getRecordingTime}: {cali
       if (next !== definitions) { definitions = next; fitted = false; }
     });
     const receive = (event: MessageEvent) => {
-      if (fitted || event.data.type !== 'stats') return;
+      if (fitted || event.data.type !== (pointCloud ? 'pointCloudStats' : 'stats')) return;
+      if (pointCloud && !event.data.data.visible) return;
       const pointSources = (getLatestModelFrames() ?? []).flatMap(model => {
         const points = model.landmarks ?? model.segmentOrigins;
         return points ? [points] : [];
@@ -253,7 +254,7 @@ export function ThreeJsCanvas({calibration, pointCloud, getRecordingTime}: {cali
     };
     VIEWPORT_WORKER.addEventListener('message', receive);
     return () => {reset(); VIEWPORT_WORKER.removeEventListener('message', receive);};
-  }, [isLive, subscribeToModels, getModels, getLatestModelFrames, cameraFitWorkspace]);
+  }, [isLive, subscribeToModels, getModels, getLatestModelFrames, cameraFitWorkspace, pointCloud?.manifestUrl]);
 
   const handleFit = useCallback(() => {
     // Frame every RECONSTRUCTED thing — a person and a board both belong in the shot —

@@ -26,7 +26,8 @@ import { ThreeJsScene } from "./ThreeJsScene";
 import { fitCameraToPoints } from "./scene/SceneCamera";
 import {ViewportFrameReceiver} from './viewport-frame-transfer';
 import {referencedFrameBuffers} from './viewport-frame-codec';
-import {pointCloudPlayer, pointCloudRenderStats} from './point-cloud-store';
+import {pointCloudPlayer, pointCloudRenderStats, pointCloudStore} from './point-cloud-store';
+import {withCloudBounds} from './cloud-framing';
 import type {CloudReference} from './point-cloud-format';
 
 console.log("[viewport3d worker] module loaded");
@@ -266,7 +267,7 @@ function WorkerScene() {
     useEffect(() => {
         console.log("[viewport3d worker] WorkerScene mounted");
         const unsub1 = workerDataStore.subscribeToFitCamera((pts) => {
-            fitCameraToPoints(controlsRef.current, pts);
+            fitCameraToPoints(controlsRef.current, withCloudBounds(pts, pointCloudStore.getLatest()?.positions));
         });
         const unsub2 = workerDataStore.subscribeToResetCamera(() => {
             controlsRef.current?.reset(true);

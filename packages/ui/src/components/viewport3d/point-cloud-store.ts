@@ -6,6 +6,7 @@ export const pointCloudRenderStats = {geometryId: '', positionAttributeId: -1, c
     uploads: 0, uploadMs: 0, maxUploadMs: 0, visible: false, renderedFrameIndex: -1,
     renderedSourceFrameIndex: -1, renderedTimestamp: null as number | null};
 export const pointCloudStore = {
+    getLatest: () => latest,
     subscribe(callback: (frame: CloudFrame | null) => void): () => void {
         listeners.add(callback); callback(latest); return () => {listeners.delete(callback);};
     },
