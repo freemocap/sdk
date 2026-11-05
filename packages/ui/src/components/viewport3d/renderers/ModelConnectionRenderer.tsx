@@ -11,6 +11,7 @@ import {prepareAttachedLines, writeAttachedLines, type PreparedAttachedLines} fr
 import {prepareAttachedSurfaces, writeAttachedSurfaces, disposeAttachedSurfaces, type PreparedAttachedSurface} from './prepared-attached-surfaces';
 
 const HIDDEN_COORDINATE = 1e5;
+export const modelSurfaceStats = {layoutBuilds: 0, groupVisible: false, visibleSurfaces: 0, geometryIds: [] as number[]};
 interface EdgeBatch {
     frameIndex: number;
     source: "segmentOrigins" | "landmarks";
@@ -82,10 +83,21 @@ export function ModelConnectionRenderer() {
     useEffect(() => {group.add(object); return () => {
         disposeAttachedSurfaces(surfacesRef.current); surfacesRef.current = [];
         layoutRef.current = null; object.removeFromParent(); geometry.dispose(); material.dispose();
+        Object.assign(modelSurfaceStats, {groupVisible: false, visibleSurfaces: 0, geometryIds: []});
     };}, [group, object, geometry, material]);
     useEffect(() => subscribeToModelFrames(frames => {framesRef.current = frames; dirtyRef.current = true;}), [subscribeToModelFrames]);
     useFrame(() => {
         const frames = framesRef.current;
+        // An unavailable presentation clears dynamic samples, not the authored
+        // model. Hide the group while retaining its prepared geometry; reconcile
+        // identities and definitions when a valid frame arrives again.
+        group.visible = frames.length > 0;
+        modelSurfaceStats.groupVisible = group.visible;
+        if (!frames.length) {
+            modelSurfaceStats.visibleSurfaces = 0;
+            statsRef.current.boneLines = 0;
+            return;
+        }
         if (!layoutRef.current || !preparedModelsMatch(layoutRef.current, frames, definitions.current)) {
             layoutRef.current = prepareModels(frames, definitions.current);
             const batches = prepareEdges(layoutRef.current);
@@ -94,6 +106,8 @@ export function ModelConnectionRenderer() {
             attachedRef.current = prepareAttachedLines(layoutRef.current, edgeCount);
             disposeAttachedSurfaces(surfacesRef.current);
             surfacesRef.current = prepareAttachedSurfaces(attachedRef.current, group);
+            modelSurfaceStats.layoutBuilds++;
+            modelSurfaceStats.geometryIds = surfacesRef.current.flatMap(batch => batch.meshes.map(mesh => mesh.geometry.id));
             const count = edgeCount + attachedRef.current.reduce((sum, batch) => sum + batch.positions.length / 6, 0);
             // Release replaced GPU attributes on schema changes, including equal-size changes.
             geometry.dispose();
@@ -138,6 +152,7 @@ export function ModelConnectionRenderer() {
             }
         }
         for (const batch of surfacesRef.current) writeAttachedSurfaces(batch, frames[batch.attachment.frameIndex], rotation);
+        modelSurfaceStats.visibleSurfaces = surfacesRef.current.reduce((count, batch) => count + batch.meshes.filter(mesh => mesh.visible).length, 0);
         position.data.needsUpdate = true;
         if (colorsChanged) color.data.needsUpdate = true;
         statsRef.current.boneLines = drawn;

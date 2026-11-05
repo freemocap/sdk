@@ -29,6 +29,7 @@ import {referencedFrameBuffers} from './viewport-frame-codec';
 import {pointCloudPlayer, pointCloudRenderStats, pointCloudStore} from './point-cloud-store';
 import {withCloudBounds} from './cloud-framing';
 import type {CloudReference, CloudLoadingOptions} from './point-cloud-format';
+import {modelSurfaceStats} from './renderers/ModelConnectionRenderer';
 
 console.log("[viewport3d worker] module loaded");
 
@@ -236,7 +237,7 @@ function WorkerStatsForwarder() {
         const id = setInterval(() => {
             (self as unknown as Worker).postMessage({
                 type: "stats",
-                data: { ...statsRef.current },
+                data: { ...statsRef.current, modelSurfaces: modelSurfaceStats },
             });
             (self as unknown as Worker).postMessage({type: 'pointCloudStats', data: {...pointCloudPlayer.diagnostics, ...pointCloudRenderStats}});
         }, 500);

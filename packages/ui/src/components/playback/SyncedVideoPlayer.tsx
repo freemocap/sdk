@@ -39,6 +39,7 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
         videosReady,
         erroredVideos,
         setVideoRef,
+        setPresentationRef,
         setFrameOverlayRef,
     } = controller;
 
@@ -98,6 +99,7 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                             showOverlays={settings.showOverlays}
                             hasError={erroredVideos.has(video.videoId)}
                             setVideoRef={setVideoRef}
+                            setPresentationRef={setPresentationRef}
                             setFrameOverlayRef={setFrameOverlayRef}
                         />
                     </div>

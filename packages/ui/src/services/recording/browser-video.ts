@@ -11,11 +11,13 @@ export class BrowserVideo {
     /** Browser-confirmed presentation time, never the requested seek target. */
     presentedTime: number | null = null;
     constructor(readonly element: HTMLVideoElement, private readonly url: string,
-        private readonly duration: number, private readonly fail: (error: Error) => void) {}
+        private readonly duration: number, private readonly fail: (error: Error) => void,
+        private readonly onPresented?: (time: number, video: HTMLVideoElement) => void) {}
     async open(time: number): Promise<void> {
         const presented = (_now: number, metadata: VideoFrameCallbackMetadata): void => {
             if (this.closed) return;
             this.presentedTime = metadata.mediaTime;
+            try {this.onPresented?.(metadata.mediaTime, this.element);} catch (error) {this.fail(error instanceof Error ? error : new Error(String(error)));}
             this.presentationHandle = this.element.requestVideoFrameCallback(presented);
         };
         this.presentationHandle = this.element.requestVideoFrameCallback(presented);
@@ -41,7 +43,10 @@ export class BrowserVideo {
         const available = Array.from({length: buffered.length}, (_, i) =>
             time >= buffered.start(i) && time < buffered.end(i)).some(Boolean);
         if (this.converted && !available) {await this.restart(time); return;}
-        if (Math.abs(this.element.currentTime - time) < 0.001) return;
+        if (Math.abs(this.element.currentTime - time) < 0.001) {
+            if (this.presentedTime !== null) this.onPresented?.(this.presentedTime, this.element);
+            return;
+        }
         this.presentedTime = null;
         const ready = this.waitFor('seeked');
         this.element.currentTime = time;

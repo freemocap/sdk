@@ -69,3 +69,19 @@
   review = {Read local native configuration and application/startup.rs; no source mutations or product runtime copied},
   claim = {Defer main window creation until application state exists and package the built UI through native configuration}
 }
+
+@online{mdnOffscreenBitmap2026,
+  title = {OffscreenCanvas: transferToImageBitmap() method},
+  url = {https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvas/transferToImageBitmap},
+  urldate = {2026-11-05},
+  review = {Read snapshot allocation, replacement canvas image and explicit bitmap lifetime guidance},
+  claim = {Canvas snapshots own graphics resources that must be consumed or closed when discarded}
+}
+
+@online{mdnVideoFrameCallback2026,
+  title = {HTMLVideoElement: requestVideoFrameCallback() method},
+  url = {https://developer.mozilla.org/en-US/docs/Web/API/HTMLVideoElement/requestVideoFrameCallback},
+  urldate = {2026-11-05},
+  review = {Read callback compositor timing and mediaTime frame timestamp metadata},
+  claim = {Video-frame callbacks supply media timestamps for per-frame canvas processing; they do not synchronize independent videos}
+}

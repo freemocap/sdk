@@ -10,6 +10,7 @@ interface ZoomableVideoTileProps {
     showOverlays: boolean;
     hasError: boolean;
     setVideoRef: PlaybackController['setVideoRef'];
+    setPresentationRef: PlaybackController['setPresentationRef'];
     setFrameOverlayRef: PlaybackController['setFrameOverlayRef'];
 }
 
@@ -20,12 +21,14 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
     showOverlays,
     hasError,
     setVideoRef,
+    setPresentationRef,
     setFrameOverlayRef,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const registerVideo = useCallback((element: HTMLVideoElement | null): void => {
         setVideoRef(videoId, element);
     }, [videoId, setVideoRef]);
+    const registerPresentation = useCallback((canvas: HTMLCanvasElement | null): void => setPresentationRef(videoId, canvas), [videoId, setPresentationRef]);
     const { zoomWrapperStyle, cursor, containerHandlers } = useZoomTransform(containerRef);
     const { t } = useTranslation();
 
@@ -39,12 +42,14 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
             }}
             {...containerHandlers}
         >
-            <div style={zoomWrapperStyle}>
+            <div style={{...zoomWrapperStyle, position: 'relative'}}>
                 <video playsInline muted
                     ref={registerVideo}
                     className="w-full h-full block"
-                    style={{ objectFit: 'contain' }}
+                    style={{ objectFit: 'contain', opacity: 0.001 }}
                 />
+                <canvas ref={registerPresentation} data-video-id={videoId} className="playback-presented-image w-full h-full block"
+                    style={{position: 'absolute', inset: 0, objectFit: 'contain', background: '#000'}} />
             </div>
 
             {hasError && (

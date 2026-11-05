@@ -1,3 +1,4 @@
+import {VideoPresentation} from '@/services/recording/video-presentation';
 import {BrowserVideo, type VideoEntry} from '@/services/recording/browser-video';
 import {videoFrameSeekTime, waitForSharedPresentation} from '@/services/recording/presentation-barrier';
 import {useCallback, useEffect, useRef, useState} from 'react';
@@ -26,6 +27,8 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const [erroredVideos, setErroredVideos] = useState(new Set<string>());
     const [settings, setSettings] = useState<PlaybackSettings>({showOverlays: true, timestampFormat: 'seconds'});
     const settingsRef = useRef(settings); settingsRef.current = settings;
+    const presentation = useRef<VideoPresentation | null>(null);
+    const displayCanvases = useRef(new Map<string, HTMLCanvasElement>());
     const elements = useRef(new Map<string, HTMLVideoElement>());
     const [elementRevision, setElementRevision] = useState(0);
     const players = useRef<BrowserVideo[]>([]);
@@ -57,12 +60,14 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         setRequestedFrame(currentFrameRef.current);
         if (!totalFrames || !videosRef.current.length) return;
         if (source && !source[1].valid) {fail(new Error('Video group has incompatible frame counts. See recording resource errors.')); return;}
-        if (videosRef.current.some(video => !elements.current.has(video.videoId))) return;
+        if (videosRef.current.some(video => !elements.current.has(video.videoId) || !displayCanvases.current.has(video.videoId))) return;
         let active = true;
+        const presented = new VideoPresentation(new Map(videosRef.current.map(video => [video.videoId, displayCanvases.current.get(video.videoId)!])), fps);
+        presentation.current = presented;
         const opened = videosRef.current.map(video => {
             const element = elements.current.get(video.videoId);
             if (!element) throw new Error(`Missing video element: ${video.filename}`);
-            return new BrowserVideo(element, video.streamUrl, duration, fail);
+            return new BrowserVideo(element, video.streamUrl, duration, fail, (time, videoElement) => presented.capture(video.videoId, videoElement, time));
         });
         players.current = opened;
         const start = videoFrameSeekTime(currentFrameRef.current, fps);
@@ -80,12 +85,13 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
             setErroredVideos(failed); setVideosReady(players.current.length);
             if (failures.length) setError(failures.join('\n'));
         });
-        return () => {active = false; opened.forEach(player => player.close()); players.current = [];};
+        return () => {active = false; opened.forEach(player => player.close()); players.current = []; presented.close(); if (presentation.current === presented) presentation.current = null;};
     }, [videoKey, totalFrames, duration, fps, recordingId, recordingParentDirectory, elementRevision, fail]);
 
     const seek = useCallback(async (frame: number): Promise<boolean> => {
         const generation = ++seekGeneration.current;
         seeking.current = true;
+        presentation.current?.reset();
         setIsPlaying(false);
         const target = Math.max(0, Math.min(Math.round(frame), totalFrames - 1));
         pendingPresentation.current = target;
@@ -97,6 +103,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
             if (!current.length || current.length !== videosRef.current.length) return false;
             await Promise.all(current.map(player => player.seek(videoFrameSeekTime(target, fps))));
             if (!await waitForSharedPresentation(() => current.map(player => player.presentedTime), target, fps, isCurrent)) return false;
+            if (!presentation.current?.commit(target)) throw new Error('Matching decoded images were not available after seek');
             // Publish the browser-confirmed shared target before any caller resumes media.
             pendingPresentation.current = null;
             currentFrameRef.current = target;
@@ -127,11 +134,12 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         let count = 0;
         let lastPresentedFrame = -1;
         const tick = (now: number): void => {
-            const time = players.current[0]?.presentedTime;
-            if (time === null || time === undefined) {handle = requestAnimationFrame(tick); return;}
-            const frame = Math.min(totalFrames - 1, Math.max(0, Math.round(time * fps)));
-            if (seeking.current || (pendingPresentation.current !== null && pendingPresentation.current !== frame) || players.current.length !== videosRef.current.length || players.current.some(player => player.presentedTime === null ||
-                Math.round(player.presentedTime * fps) !== frame)) {
+            const shown = presentation.current;
+            if (!seeking.current) shown?.commit(pendingPresentation.current ?? undefined);
+            const time = shown?.time;
+            const frame = shown?.index;
+            if (time === null || time === undefined || frame === null || frame === undefined || seeking.current ||
+                (pendingPresentation.current !== null && pendingPresentation.current !== frame)) {
                 handle = requestAnimationFrame(tick);
                 return;
             }
@@ -163,18 +171,18 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         if (element) elements.current.set(id, element); else elements.current.delete(id);
         setElementRevision(revision => revision + 1);
     }, []);
+    const setPresentationRef = useCallback((id: string, canvas: HTMLCanvasElement | null): void => {
+        if ((displayCanvases.current.get(id) ?? null) === canvas) return;
+        if (canvas) displayCanvases.current.set(id, canvas); else displayCanvases.current.delete(id);
+        setElementRevision(revision => revision + 1);
+    }, []);
     const setFrameOverlayRef = useCallback((id: string, element: HTMLCanvasElement | null): void => {
         if (element) frameLabels.current.set(id, new PlaybackLabel(element)); else frameLabels.current.delete(id);
     }, []);
     const getDisplayFps = useCallback(() => measuredFps.current, []);
     const getRecordingTime = useCallback(() => {
-        const current = players.current;
-        if (seeking.current || !current.length || current.length !== videosRef.current.length) return null;
-        const time = current[0].presentedTime;
-        if (time === null) return null;
-        const index = Math.min(totalFrames - 1, Math.max(0, Math.round(time * fps)));
-        if (pendingPresentation.current !== null && pendingPresentation.current !== index) return null;
-        if (current.some(player => player.presentedTime === null || Math.round(player.presentedTime * fps) !== index)) return null;
+        const index = presentation.current?.index;
+        if (seeking.current || index === null || index === undefined || pendingPresentation.current !== null) return null;
         return leader?.timeline.timestamps_s[index] ?? null;
     }, [leader, fps, totalFrames]);
     const setPlaybackRun = useCallback((run: PlaybackRun): void => {
@@ -222,7 +230,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         handlePlaybackRateChange: setPlaybackRate,
         handleSeekToStart: (): void => {void seek(0);}, handleSeekToEnd: (): void => {void seek(totalFrames - 1);},
         handleToggleLoop: (): void => setIsLooping(value => !value),
-        setVideoRef, setFrameOverlayRef, currentFrameRef,
+        setVideoRef, setPresentationRef, setFrameOverlayRef, currentFrameRef,
     };
 }
 export type PlaybackController = ReturnType<typeof usePlaybackController>;

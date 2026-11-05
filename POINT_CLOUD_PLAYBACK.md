@@ -98,3 +98,52 @@ The default is 16, configurable for other machines. All six trials verified
 loader results do not establish native rendering cadence or solve presentation
 clock gaps. Existing 15-frame chunks already load in under one second here;
 repacking the recording is not required for this preload correction.
+
+## Matched recorded-image presentation
+
+The recorded viewer keeps native video decoding and HTTP media delivery. Each
+camera's video-frame callback captures a decoded image into an owned bitmap,
+retaining at most four pending bitmaps per camera. When all cameras have a
+matching local frame index, the viewer draws that group to the visible canvases
+in one browser task. The selected recording timestamp comes from that displayed
+index; independently advancing decoder video elements are not the visible image
+surfaces. Between matching groups the entire displayed pair remains unchanged.
+Seek and source changes clear pending ownership and start a new presentation
+epoch. Discarded and consumed bitmaps are explicitly closed
+[@mdnOffscreenBitmap2026; @mdnVideoFrameCallback2026]. There is no CPU pixel
+readback on this path, but image snapshots and canvas drawing still have costs;
+this is not an end-to-end zero-copy claim.
+
+The visible `.playback-presented-image` canvases expose `data-presented-frame`,
+`data-presented-media-time`, and `data-presentation-epoch` after drawing. These
+support diagnostics, but pixel comparison against independently decoded video
+is required to verify that the metadata describes the image actually drawn.
+The 3D worker still receives numerical updates asynchronously; a shared frame
+identity is not a promise of simultaneous physical display scanout.
+
+An unavailable numerical presentation hides the model connection/surface group
+without disposing its static geometry. On recovery, the renderer reconciles
+model identities and definitions before updating poses. Worker `stats` includes
+`modelSurfaces` with layout-build count, group visibility, visible surface count,
+and geometry IDs to distinguish resource churn from missing presentation.
+
+## Verified clip and memory accounting
+
+The 751-frame Benchy native run measured 29.18 matching image pairs/s and
+30.00 cloud uploads/s, with all 47 steady visibility samples visible and no
+post-ready cloud requests. Replay, two loops and explicit seeks passed. There
+was one left-video decoder drop among 752 reported frames, none on the right.
+Twenty raw/annotated screenshot comparisons, both cameras at local frames
+0, 375, 600, 650 and 749, were pixel-identical to separately sought reference
+video images. These observations cover this clip/runtime, not all recordings.
+
+Cloud storage retains 281,769,588 bytes once; XYZ/RGB views share those buffers.
+The fixed cloud attributes add 1,440,000 CPU bytes and the same GPU allocation.
+For two 1280x720 videos, eight retained bitmap slots have a nominal RGBA size of
+29,491,200 bytes. Two scratch canvases and two displayed canvases add 14,745,600
+nominal RGBA bytes, and capture can briefly allocate one additional bitmap
+before eviction (3,686,400 bytes). These are backing-size estimates, not measured
+process/GPU memory: decoder surfaces, browser copies/caches, object metadata,
+render targets and driver allocations are additional. The runtime closes owned
+bitmaps on consumption, eviction, seek and teardown; it does not claim zero-copy
+video presentation or a total-process memory bound.
