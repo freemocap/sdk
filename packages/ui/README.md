@@ -1,5 +1,43 @@
 # FreeMoCap playback UI
 
+## Pipeline control panel
+
+`PipelinePanel` presents a typed workflow using Core's graph camera, measured
+cards, ports, explanation callouts and expandable list sections. Import the
+same `@freemocap/ui/styles.css`. It performs no processing or network requests.
+
+Supply `graph: PipelineGraph` (`definition` uses the existing client
+`ProcessingPlan['graph']` contract, plus `topological_order`) and
+`nodePresentation` keyed by every node ID. Each presentation supplies `label`,
+`description`, `kind` (`source`, `computation`, `review`, `publication`),
+`availability` (`available`, `reusable`, `manual`, `unavailable`, `unimplemented`),
+and an explanatory `reason`. Optional `configuration`, `summary` and `artifacts`
+provide the application's shared settings, status content and artifact paths.
+Availability describes capability or input readiness; it does not assert that
+a node ran. In particular, reusable artifacts still require application validation.
+
+```tsx
+<PipelinePanel graph={workflow} nodePresentation={stages}
+  view={view} onViewChange={setView}
+  actions={<button disabled>Create training set</button>}
+  notice="Human review and dataset publication are not connected yet."/>
+```
+
+Keep configuration values controlled by the application; graph/list switching
+renders the same supplied content, without duplicating the settings model.
+Wrap fields in `PipelineSetting` with `id`, `label`, `description` and `children`
+to register their explanations with the graph's info expansion. `locked` makes
+configuration inert during a run. Optional `operations: TaskOperation[]` displays
+actual retained counts and timings; omitting it produces no simulated progress.
+`onOpenArtifact(path)` delegates opening files to the host. `actions` delegates
+execution controls and their disabled reasons to the application.
+
+The panel checks stage IDs, required port bindings and dependency order before
+rendering. This is display validation, not a replacement for the server's graph
+compiler or application payload validation. Manual gates may appear in the
+workflow without being executable handlers. Extraction sources and adaptations
+are recorded in `provenance/pipeline-ui-seed.json` at the SDK repository root.
+
 ## Themed controls and scene legend
 
 Import `@freemocap/ui/styles.css` once. `NumberField` takes `label`, a string or

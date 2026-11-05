@@ -1,0 +1,38 @@
+{
+  "core_revision": "3ae9842d896085e7d05603e279fa0a53502122c1",
+  "sources": [
+    {
+      "path": "freemocap-ui/src/components/processing-graph/ProcessingGraphView.tsx",
+      "sha256": "1d2382f4d3271f773f9ab482da10fb7fe91a73432b06e8265f43e2fec5abaa57"
+    },
+    {
+      "path": "freemocap-ui/src/components/processing-graph/processing-graph.css",
+      "sha256": "b07282e4ca6a0330a377ecbd2eea3c2ba9c86dc24d45069e1577a596e06a52b5"
+    },
+    {
+      "path": "freemocap-ui/src/components/processing-graph/stage-layout.ts",
+      "sha256": "9cf2735eaf5887d63faf06e28318f0ef40f9f0b25cd70871aa40fc5fc15de5e1"
+    },
+    {
+      "path": "freemocap-ui/src/components/common/settings-layout/explain-registry.tsx",
+      "sha256": "576dba4149cbb211563fef9542caebe9e03f0fd97999b3de99178a278a8ff0a6"
+    },
+    {
+      "path": "freemocap-ui/src/components/mocap-setup/processing-sections.tsx",
+      "sha256": "36012013bb37743fb54e869a1a30431cfe98cc214c2570e8a586e660368109d2"
+    },
+    {
+      "path": "freemocap-ui/src/components/mocap-setup/stage-section.tsx",
+      "sha256": "458160a1daaaabae92501315e82f7ea20793a284c72b169d20f7e8f9552f7309"
+    },
+    {
+      "path": "freemocap-ui/src/components/pipeline-progress/OperationProgressBars.tsx",
+      "sha256": "f6ee788f5ec7a2925b40d7cbf9d4e5ab791838191e91124353a0cc60bae0bb16"
+    },
+    {
+      "path": "freemocap-ui/src/components/pipeline-progress/ProcessingTiming.tsx",
+      "sha256": "dd8a38caa93690ac8d907bf6e8a5eb3c35cc39259ba9f28dd6a852640b356a59"
+    }
+  ],
+  "adaptation": "Preserve graph camera, pointer, measured card, port and explain machinery. Inject application semantics/settings, generalize layout from mocap IDs to ordered workflow. Shared list sections and operation rows without Redux or Electron dependencies. Core unchanged."
+}

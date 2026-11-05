@@ -8,3 +8,5 @@ export {RecordingBrowser, type RecordingBrowserProps, type BrowserEntry} from '.
 export {ServerConnectionStatus, type ServerConnectionStatusProps} from './connection/ServerConnectionStatus';
 export {default as ButtonSm, type ButtonSmProps} from './components/ui-components/ButtonSm';
 export {NumberField, ControlSection, Legend, type NumberFieldProps, type ControlSectionProps, type LegendProps, type LegendItem} from './controls/Controls';
+export {PipelinePanel, PipelineSetting} from './pipeline/PipelinePanel';
+export type {PipelinePanelProps, PipelineStagePresentation, PipelineGraph} from './pipeline/model';

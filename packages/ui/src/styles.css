@@ -1,4 +1,6 @@
 @import './styles/App.css';
+@import './pipeline/processing-graph.css';
+@import './pipeline/pipeline-panel.css';
 @import './components/viewport3d/scene/viewport-overlay.css';
 @import 'react-grid-layout/css/styles.css';
 @import 'react-resizable/css/styles.css';
