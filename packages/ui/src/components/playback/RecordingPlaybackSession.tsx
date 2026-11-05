@@ -40,12 +40,6 @@ const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, available
         recordingId: activeRecordingName, recordingParentDirectory: activeRecordingBaseDirectory});
     return (
         <div className="playback-mode-main-container flex flex-col flex-1 min-h-0 pos-rel">
-            <GridSettingsOverlay
-                settings={settings}
-                videoCount={videos.length}
-                onSettingsChange={handleSettingsChange}
-            />
-
             <div className="flex flex-col flex-1 overflow-hidden">
                 <ErrorBoundary>
                     <div className="flex flex-col pos-rel flex-1 min-h-0">
@@ -75,6 +69,8 @@ const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, available
                                     rec: {recordingFps.toFixed(2)} fps
                                 </span>
                             )}
+                            <GridSettingsOverlay settings={settings} videoCount={videos.length}
+                                onSettingsChange={handleSettingsChange}/>
                         </div>
 
                         {bundle?.errors.length ? <details className="playback-resource-errors">

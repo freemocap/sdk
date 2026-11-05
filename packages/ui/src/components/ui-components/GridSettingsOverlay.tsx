@@ -48,7 +48,7 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
   };
   return (
     <>
-      <div data-onboarding="realtime:pipeline" className="streaming-bar-setting-action-bar z-2 pos-abs flex flex-row gap-0 top-0 right-0">
+      <div className="sdk-grid-settings z-2 pos-rel flex flex-row gap-0">
         <div className="live-action-buttons-container flex flex-row gap-4">
 
           <div className="grid-settings-button-playback-model live-action-buttons-group-2 flex flex-row items-center gap-1">
@@ -63,7 +63,6 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
             />
           </div>
         </div>
-        <div className="modal-container stream-mode pos-rel">
 {/* SETTINGS PANEL */}
           {isOpen && (
             <div
@@ -139,7 +138,6 @@ export const GridSettingsOverlay: React.FC<GridSettingsOverlayProps> = ({
               </div>
             </div>
           )}
-        </div>
       </div>
     </>
   );
