@@ -144,7 +144,7 @@ function serializeWheelEvent(e: WheelEvent, rect: DOMRect) {
 }
 export function ThreeJsCanvas({calibration, pointCloud, getRecordingTime}: {calibration: LoadedCalibration | null;
   pointCloud?: PointCloudPlayback; getRecordingTime?: () => number | null}) {
-  usePointCloudForwarder(VIEWPORT_WORKER, pointCloud, getRecordingTime);
+  const cloudProgress = usePointCloudForwarder(VIEWPORT_WORKER, pointCloud, getRecordingTime);
   const camerasPaused = false;
   const {
     isLive,
@@ -388,6 +388,9 @@ export function ThreeJsCanvas({calibration, pointCloud, getRecordingTime}: {cali
             background: "var(--color-bg-primary)",
           }}
         />
+        {cloudProgress && cloudProgress.status !== 'idle' && <div role="status" className="tag text sm" style={{position: 'absolute', bottom: 8, left: 8, pointerEvents: 'none'}}>
+          {cloudProgress.status === 'error' ? 'Point cloud loading failed' : cloudProgress.status === 'ready' ? 'Point cloud ready' : `Loading point cloud ${cloudProgress.totalBytes ? Math.round(100 * cloudProgress.loadedBytes / cloudProgress.totalBytes) : 0}%`}
+        </div>}
         <ViewportOverlay onFitCamera={handleFit} onResetCamera={handleReset} />
         <PinnedInspection />
       </div>

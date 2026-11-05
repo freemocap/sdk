@@ -2,7 +2,8 @@ import {z} from 'zod';
 import {SpatialReferenceSchema} from '@freemocap/client/recording';
 import {snapshotEqual} from '@freemocap/client';
 
-export interface PointCloudPlayback {manifestUrl: string}
+export interface CloudLoadingOptions {concurrency?: number; maxResidentBytes?: number}
+export interface PointCloudPlayback {manifestUrl: string; loading?: CloudLoadingOptions}
 export const CloudReferenceSchema = z.object({id: z.string().min(1), definition: SpatialReferenceSchema});
 export type CloudReference = z.infer<typeof CloudReferenceSchema>;
 const FrameIdentity = z.object({frame_index: z.number().int().nonnegative(), source_frame_index: z.number().int().nonnegative(),

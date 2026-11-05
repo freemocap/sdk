@@ -33,16 +33,16 @@ test('cloud binary retains source identities and typed storage; rejects mismatch
 });
 const flush = async () => {for (let i = 0; i < 8; i++) await new Promise(resolve => setImmediate(resolve));};
 test('default fetch retains the worker global receiver required by browser WebIDL', async () => {
-    const {manifest} = fixture();
+    const {manifest, buffers} = fixture();
     const original = globalThis.fetch;
     let calls = 0;
-    globalThis.fetch = async function(this: unknown) {
+    globalThis.fetch = async function(this: unknown, input: string | URL | Request) {
         assert.equal(this, globalThis); calls++;
-        return new Response(JSON.stringify(manifest));
+        return String(input).endsWith('manifest.json') ? new Response(JSON.stringify(manifest)) : new Response(buffers[Number(new URL(String(input)).pathname.slice(1).split('.')[0])]);
     };
     const errors: Error[] = [];
     const player = new PointCloudPlayer(() => {}, error => errors.push(error));
-    try {await player.open('http://local/manifest.json', reference); assert.equal(calls, 1); assert.deepEqual(errors, []);}
+    try {await player.open('http://local/manifest.json', reference); await flush(); assert.equal(calls, 9); assert.deepEqual(errors, []);}
     finally {player.close(); globalThis.fetch = original;}
 });
 test('cloud cache is bounded across seeks and never emits a stale asynchronous frame', async () => {
@@ -57,7 +57,7 @@ test('cloud cache is bounded across seeks and never emits a stale asynchronous f
         return new Promise<Response>(resolve => pending.set(index, resolve));
     }) as typeof fetch;
     const player = new PointCloudPlayer(value => {shown = value;}, error => errors.push(error), fetcher);
-    await player.open('http://local/manifest.json', reference);
+    await player.open('http://local/manifest.json', reference, {concurrency: 2, maxResidentBytes: 3 * Math.max(...buffers.map(buffer => buffer.byteLength))});
     player.update(0); player.update(4);
     pending.get(0)!(new Response(buffers[0])); await flush();
     assert.equal(shown, null);
@@ -68,4 +68,38 @@ test('cloud cache is bounded across seeks and never emits a stale asynchronous f
     assert.ok(player.stats.cacheBytes <= 3 * Math.max(...buffers.map(buffer => buffer.byteLength)));
     player.update(null); assert.equal(shown, null);
     player.close(); assert.equal(player.stats.cacheBytes, 0); assert.deepEqual(errors, []);
+});
+
+
+test('clip preloads without a clock and retains all frames across seeks and loops without network', async () => {
+    const {manifest, buffers} = fixture();
+    let requests = 0; let shown: CloudFrame | null = null;
+    const errors: Error[] = [];
+    const player = new PointCloudPlayer(frame => {shown = frame;}, error => errors.push(error), (async input => {
+        requests++;
+        const url = String(input);
+        return url.endsWith('manifest.json') ? new Response(JSON.stringify(manifest)) : new Response(buffers[Number(new URL(url).pathname.slice(1).split('.')[0])]);
+    }) as typeof fetch);
+    await player.open('http://local/manifest.json', reference, {concurrency: 4}); await flush();
+    assert.equal(player.diagnostics.status, 'ready'); assert.equal(player.diagnostics.residentChunks, 8);
+    assert.equal(player.diagnostics.cacheBytes, buffers.reduce((sum, buffer) => sum + buffer.byteLength, 0));
+    const loadedRequests = requests;
+    for (const index of [0, 7, 1, 6, 0, 7, 0]) {player.update(index); assert.equal((shown as CloudFrame | null)?.sourceFrameIndex, 90 + index);}
+    assert.equal(requests, loadedRequests);
+    player.update(null); assert.equal(shown, null);
+    assert.equal(player.diagnostics.hiddenReason, 'presentation-clock-unavailable'); assert.equal(player.diagnostics.status, 'ready');
+    player.close(); assert.deepEqual(errors, []);
+});
+
+test('closing preload rejects late responses and releases retained storage', async () => {
+    const {manifest, buffers} = fixture();
+    const pending: ((response: Response) => void)[] = []; let shown: CloudFrame | null = null;
+    const player = new PointCloudPlayer(frame => {shown = frame;}, error => {throw error;}, (async input => {
+        if (String(input).endsWith('manifest.json')) return new Response(JSON.stringify(manifest));
+        return new Promise<Response>(resolve => pending.push(resolve));
+    }) as typeof fetch);
+    await player.open('http://local/manifest.json', reference, {concurrency: 4}); assert.equal(pending.length, 4);
+    player.update(0); player.close(); pending.forEach((resolve, index) => resolve(new Response(buffers[index]))); await flush();
+    assert.equal(shown, null); assert.equal(player.diagnostics.cacheBytes, 0);
+    assert.equal(player.diagnostics.status, 'idle'); assert.equal(player.diagnostics.inFlight, 0);
 });

@@ -28,7 +28,7 @@ import {ViewportFrameReceiver} from './viewport-frame-transfer';
 import {referencedFrameBuffers} from './viewport-frame-codec';
 import {pointCloudPlayer, pointCloudRenderStats, pointCloudStore} from './point-cloud-store';
 import {withCloudBounds} from './cloud-framing';
-import type {CloudReference} from './point-cloud-format';
+import type {CloudReference, CloudLoadingOptions} from './point-cloud-format';
 
 console.log("[viewport3d worker] module loaded");
 
@@ -181,8 +181,8 @@ self.addEventListener("message", (event: MessageEvent) => {
 
     switch (type) {
         case 'pointCloudSource': {
-            const source = msg.data as {url: string; reference: CloudReference} | null;
-            if (source) void pointCloudPlayer.open(source.url, source.reference); else pointCloudPlayer.close();
+            const source = msg.data as {url: string; reference: CloudReference; loading?: CloudLoadingOptions} | null;
+            if (source) void pointCloudPlayer.open(source.url, source.reference, source.loading); else pointCloudPlayer.close();
             break;
         }
         case 'pointCloudTime': pointCloudPlayer.update(msg.data as number | null); break;
