@@ -230,7 +230,10 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
   useEffect(() => {
     if (isLive) return;
     let fitted = false;
-    const reset = subscribeToModels(() => { fitted = false; });
+    let definitions = getModels();
+    const reset = subscribeToModels(next => {
+      if (next !== definitions) { definitions = next; fitted = false; }
+    });
     const receive = (event: MessageEvent) => {
       if (fitted || event.data.type !== 'stats') return;
       const pointSources = (getLatestModelFrames() ?? []).flatMap(model => {
@@ -246,7 +249,7 @@ export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | n
     };
     VIEWPORT_WORKER.addEventListener('message', receive);
     return () => {reset(); VIEWPORT_WORKER.removeEventListener('message', receive);};
-  }, [isLive, subscribeToModels, getLatestModelFrames, cameraFitWorkspace]);
+  }, [isLive, subscribeToModels, getModels, getLatestModelFrames, cameraFitWorkspace]);
 
   const handleFit = useCallback(() => {
     // Frame every RECONSTRUCTED thing — a person and a board both belong in the shot —
