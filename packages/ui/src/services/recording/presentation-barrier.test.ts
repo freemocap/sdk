@@ -1,6 +1,15 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {waitForSharedPresentation} from './presentation-barrier';
+import {videoFrameSeekTime, waitForSharedPresentation} from './presentation-barrier';
+
+test('seek selects the requested frame despite microsecond-rounded encoder timestamps', () => {
+    const fps = 30;
+    const pts = Array.from({length: 751}, (_, index) => Math.round(index / fps * 1e6) / 1e6);
+    const displayed = (time: number) => pts.findLastIndex(value => value <= time);
+    assert.equal(displayed(749 / fps), 748); // observed native failure
+    for (const index of [0, 1, 375, 749, 750]) assert.equal(displayed(videoFrameSeekTime(index, fps)), index);
+    assert.ok(videoFrameSeekTime(750, fps) < 751 / fps);
+});
 
 test('replay waits for both presented zero frames after seeked, including repeated loops', async () => {
     for (let loop = 0; loop < 3; loop++) {

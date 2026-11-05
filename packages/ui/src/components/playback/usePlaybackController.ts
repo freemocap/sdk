@@ -1,5 +1,5 @@
 import {BrowserVideo, type VideoEntry} from '@/services/recording/browser-video';
-import {waitForSharedPresentation} from '@/services/recording/presentation-barrier';
+import {videoFrameSeekTime, waitForSharedPresentation} from '@/services/recording/presentation-barrier';
 import {useCallback, useEffect, useRef, useState} from 'react';
 import type {PlaybackSettings} from './SyncedVideoPlayer';
 import {PlaybackLabel} from '@/services/recording/playback-label';
@@ -65,7 +65,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
             return new BrowserVideo(element, video.streamUrl, duration, fail);
         });
         players.current = opened;
-        const start = currentFrameRef.current / fps;
+        const start = videoFrameSeekTime(currentFrameRef.current, fps);
         void Promise.allSettled(opened.map(player => player.open(start))).then(results => {
             if (!active) return;
             const failed = new Set<string>();
@@ -95,7 +95,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         const isCurrent = (): boolean => players.current === current && generation === seekGeneration.current;
         try {
             if (!current.length || current.length !== videosRef.current.length) return false;
-            await Promise.all(current.map(player => player.seek(target / fps)));
+            await Promise.all(current.map(player => player.seek(videoFrameSeekTime(target, fps))));
             if (!await waitForSharedPresentation(() => current.map(player => player.presentedTime), target, fps, isCurrent)) return false;
             // Publish the browser-confirmed shared target before any caller resumes media.
             pendingPresentation.current = null;
