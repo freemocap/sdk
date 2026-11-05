@@ -2,6 +2,11 @@
 
 Import from `freemocap_sdk.storage`. Project schemas, filenames, approval states and retention belong to the consuming application.
 
+Canonical recording paths and processing-input publication are shared separately
+through `freemocap_sdk.recording_structure` and `freemocap_sdk.recording_inputs`;
+see the root `RECORDING_CONTRACT.md`. Application extensions and source-specific
+stereo manifests remain application-owned.
+
 | Interface | Contract |
 | --- | --- |
 | `file_digest(path)` | Streaming SHA256 of file bytes. |

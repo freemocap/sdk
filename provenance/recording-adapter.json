@@ -6,12 +6,18 @@
     "freemocap/api/http/recordings/resources_router.py",
     "freemocap/core/recording/data_descriptors/recording_descriptor.py: RunDescriptor.reference_frames",
     "freemocap/core/recording/sample_encoding/spatial_points.py: SpatialReference, SpatialBasis",
-    "freemocap/core/tasks/calibration/shared/camera_extrinsics.py: world_position, world_orientation"
+    "freemocap/core/tasks/calibration/shared/camera_extrinsics.py: world_position, world_orientation",
+    "RECORDING_CONTRACT.md and shared/recording-contract/paths.json",
+    "freemocap/system/recording_structure/recording_structure.py",
+    "freemocap/core/tasks/calibration/shared/calibration_toml.py: CameraToml"
   ],
   "sdk_contracts": [
     "packages/client/src/recording/playback-data.ts",
     "packages/client/src/recording/playback-parquet.ts",
-    "packages/client/tools/generate-recording-fixture.py"
+    "packages/client/tools/generate-recording-fixture.py",
+    "packages/server/freemocap_sdk/recording_paths.json",
+    "packages/server/freemocap_sdk/recording_structure.py",
+    "packages/server/freemocap_sdk/recording_inputs.py"
   ],
   "adaptation": "Application-resolved immutable recording resources, established tall display columns and quoted revision ETag; native range video playback and retained worker-decoded numerical arrays. Application schema, geometry conversion and publication ownership remain injected. No Core imports or legacy directory reconstruction."
 }

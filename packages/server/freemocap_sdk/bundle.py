@@ -28,7 +28,8 @@ def main() -> None:
                     "--specpath", str(args.work.resolve()),
                     "--collect-submodules", "uvicorn", "--collect-submodules", "websockets",
                     # Preserve package-relative resources [@pyinstallerData2026].
-                    *[arg for package in args.collect_data for arg in ("--collect-data", package)],
+                    *[arg for package in dict.fromkeys(["freemocap_sdk", *args.collect_data])
+                      for arg in ("--collect-data", package)],
                     str(args.entrypoint.resolve())], check=True)
 
 

@@ -1,0 +1,17 @@
+{
+  "contract_version": 1,
+  "paths": {
+    "videos_synchronized_dir": "videos/synchronized",
+    "videos_annotated_dir": "videos/annotated",
+    "videos_stereo_dir": "videos/stereo",
+    "stereo_manifest_path": "videos/stereo/{recording_name}_stereo_sources.json",
+    "camera_timestamps_dir": "videos/synchronized/timestamps/camera_timestamps",
+    "multiframe_timing_path": "videos/synchronized/timestamps/{recording_name}.multiframe.timestamps.csv",
+    "source_timing_path": "videos/synchronized/timestamps/{recording_name}.source_timing.json",
+    "calibration_toml_path": "{recording_name}_calibration.toml",
+    "recording_info_path": "{recording_name}_recording_info.json",
+    "data_parquet_path": "{recording_name}_data.parquet",
+    "exports_dir": "exports",
+    "logs_dir": "logs"
+  }
+}
