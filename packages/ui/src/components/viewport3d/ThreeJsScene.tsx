@@ -20,6 +20,7 @@ import {ViewportPicker} from "@/components/viewport3d/renderers/ViewportPicker";
 import {useViewportState} from "@/components/viewport3d/scene/ViewportStateContext";
 import {useKeypointsSource} from "./KeypointsSourceContext";
 import {workerDataStore} from "./WorkerDataStore";
+import {PointCloudRenderer} from './renderers/PointCloudRenderer';
 /**
  * Calls invalidate() whenever scene data changes so the WebGL render loop
  * only fires on-demand instead of 60fps. Covers keypoints (high-frequency),
@@ -104,6 +105,7 @@ export function ThreeJsScene({ cameraControlsRef }: ThreeJsSceneProps) {
             <SceneCamera controlsRef={cameraControlsRef} />
             <SceneEnvironment />
             <ReferenceFrame />
+            <PointCloudRenderer />
             <KeypointsRenderer />
             {visibility.centerOfMass && <CenterOfMassRenderer />}
             {visibility.boneLines && <ModelConnectionRenderer />}

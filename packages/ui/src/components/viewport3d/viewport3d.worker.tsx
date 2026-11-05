@@ -26,6 +26,8 @@ import { ThreeJsScene } from "./ThreeJsScene";
 import { fitCameraToPoints } from "./scene/SceneCamera";
 import {ViewportFrameReceiver} from './viewport-frame-transfer';
 import {referencedFrameBuffers} from './viewport-frame-codec';
+import {pointCloudPlayer, pointCloudRenderStats} from './point-cloud-store';
+import type {CloudReference} from './point-cloud-format';
 
 console.log("[viewport3d worker] module loaded");
 
@@ -177,6 +179,12 @@ self.addEventListener("message", (event: MessageEvent) => {
     if (!type) return;
 
     switch (type) {
+        case 'pointCloudSource': {
+            const source = msg.data as {url: string; reference: CloudReference} | null;
+            if (source) void pointCloudPlayer.open(source.url, source.reference); else pointCloudPlayer.close();
+            break;
+        }
+        case 'pointCloudTime': pointCloudPlayer.update(msg.data as number | null); break;
         case "init": {
             const p = msg.payload as {
                 canvas: OffscreenCanvas;
@@ -193,6 +201,7 @@ self.addEventListener("message", (event: MessageEvent) => {
             break;
         }
         case "teardown": {
+            pointCloudPlayer.close();
             frameReceiver.reset();
             workerDataStore.dispatch("presentationReset", null);
             if (root) {
@@ -228,6 +237,7 @@ function WorkerStatsForwarder() {
                 type: "stats",
                 data: { ...statsRef.current },
             });
+            (self as unknown as Worker).postMessage({type: 'pointCloudStats', data: {...pointCloudPlayer.diagnostics, ...pointCloudRenderStats}});
         }, 500);
         return () => clearInterval(id);
     }, [statsRef]);

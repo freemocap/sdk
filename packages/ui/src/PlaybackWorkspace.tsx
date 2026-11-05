@@ -5,10 +5,11 @@ import {PlaybackResources, useRecordingBundle, type RecordingSelection} from './
 
 import translations from './i18n/i18n';
 
-export interface PlaybackWorkspaceProps {baseUrl: string; recording: RecordingSelection | null; showTimingNotice?: boolean}
+export interface PlaybackWorkspaceProps {baseUrl: string; recording: RecordingSelection | null; showTimingNotice?: boolean;
+    pointCloud?: import('./components/viewport3d/point-cloud-format').PointCloudPlayback}
 
 /** Core's playback presentation, with explicit endpoint and selection inputs. */
-export function PlaybackWorkspace({baseUrl, recording, showTimingNotice}: PlaybackWorkspaceProps) {
+export function PlaybackWorkspace({baseUrl, recording, showTimingNotice, pointCloud}: PlaybackWorkspaceProps) {
     const resources = useRecordingBundle(baseUrl, recording);
     const {bundle} = resources;
     const [selectedSource, setSelectedSource] = useState<string | null>(null);
@@ -22,6 +23,7 @@ export function PlaybackWorkspace({baseUrl, recording, showTimingNotice}: Playba
                 {resources.loading && <p role="status">Loading recording…</p>}
                 {resources.error && <p role="alert">{resources.error}</p>}
                 <RecordingPlaybackSession recording={recording} videos={videos} showTimingNotice={showTimingNotice}
+                    pointCloud={pointCloud}
                     availableSources={availableSources} selectedSource={selectedSource} setSelectedSource={setSelectedSource}/>
             </div>
         </PlaybackResources.Provider>

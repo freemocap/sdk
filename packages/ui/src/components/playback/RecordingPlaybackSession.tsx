@@ -14,9 +14,10 @@ import type {VideoEntry} from '@/services/recording/browser-video';
 
 interface Props {recording: RecordingSelection | null; videos: VideoEntry[];
     showTimingNotice?: boolean;
+    pointCloud?: import('../viewport3d/point-cloud-format').PointCloudPlayback;
     availableSources: PlaybackBundle['videos']['sources'] | null; selectedSource: string | null;
     setSelectedSource: (source: string) => void}
-const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, availableSources, selectedSource, setSelectedSource, showTimingNotice}) => {
+const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, availableSources, selectedSource, setSelectedSource, showTimingNotice, pointCloud}) => {
     const {t} = useTranslation();
     const {bundle, reloadManifest} = usePlaybackResources();
     const [settings, setSettings] = useState<CameraSettings>({columns: null, show3dView: true, layoutDirection: 'horizontal'});
@@ -114,7 +115,7 @@ const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, available
                                                 onPlaybackRun={controller.setPlaybackRun}
                                                 onDataReady={onDataReady}
                                             >
-                                                <ThreeJsCanvas calibration={bundle?.calibration ?? null}/>
+                                                <ThreeJsCanvas calibration={bundle?.calibration ?? null} pointCloud={pointCloud} getRecordingTime={controller.getRecordingTime}/>
                                             </RecordingPlaybackProvider>
                                         </div>
                                     </Panel>

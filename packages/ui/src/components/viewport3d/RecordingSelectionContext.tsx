@@ -10,6 +10,7 @@ import type {SpatialReference} from '@freemocap/client/recording';
 export interface RecordingSelection {
     cameras?: CalibrationCameraData[];
     referenceFrame?: SpatialReference;
+    referenceFrameId?: string;
     runIds: readonly number[];
     runId: number | null;
     selectRun: (runId: number) => void;

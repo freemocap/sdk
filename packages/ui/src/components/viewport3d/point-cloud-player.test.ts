@@ -1,0 +1,58 @@
+import {test} from 'node:test';
+import assert from 'node:assert/strict';
+import {CloudManifestSchema, decodeCloudChunk, type CloudFrame} from './point-cloud-format';
+import {PointCloudPlayer} from './point-cloud-player';
+
+const reference = {id: 'scene', definition: {name: 'scene', basis: 'blender_x_right_y_forward_z_up' as const, units: 'mm' as const}};
+function fixture() {
+    const buffers = Array.from({length: 8}, (_, index) => {
+        const header = new TextEncoder().encode(JSON.stringify({schema_version: 1, revision: 'r1', reference_frame: reference,
+            frames: [{frame_index: index, source_frame_index: 90 + index, timestamp_s: index, timestamp_ns: String(1000000000 + index),
+                point_count: 1, positions_offset: 0, colors_offset: 12}]}));
+        const payload = Math.ceil((4 + header.length) / 4) * 4;
+        const buffer = new ArrayBuffer(payload + 15);
+        new DataView(buffer).setUint32(0, header.length, true); new Uint8Array(buffer, 4, header.length).set(header);
+        new Float32Array(buffer, payload, 3).set([index, 20, 30]); new Uint8Array(buffer, payload + 12).set([255, 128, 0]);
+        return buffer;
+    });
+    const manifest = CloudManifestSchema.parse({schema_version: 1, revision: 'r1', reference_frame: reference, max_points: 25000,
+        frames: buffers.map((_, i) => ({frame_index: i, source_frame_index: 90 + i, timestamp_s: i, timestamp_ns: String(1000000000 + i), chunk_index: i})),
+        chunks: buffers.map((buffer, i) => ({url: `${i}.bin`, byte_length: buffer.byteLength}))});
+    return {buffers, manifest};
+}
+test('cloud binary retains source identities and typed storage; rejects mismatched reference and malformed lengths', () => {
+    const {manifest, buffers} = fixture();
+    const frame = decodeCloudChunk(buffers[0], manifest, 0).get(0)!;
+    assert.equal(frame.sourceFrameIndex, 90); assert.equal(frame.positions.buffer, buffers[0]);
+    assert.deepEqual([...frame.colors], [255, 128, 0]);
+    assert.throws(() => decodeCloudChunk(buffers[1], manifest, 0));
+    assert.throws(() => decodeCloudChunk(buffers[0].slice(0, -1), manifest, 0));
+    assert.throws(() => decodeCloudChunk(buffers[0], {...manifest, reference_frame: {...reference, id: 'different'}}, 0));
+    new DataView(buffers[0]).setUint32(0, 999999, true);
+    assert.throws(() => decodeCloudChunk(buffers[0], manifest, 0));
+});
+const flush = async () => {for (let i = 0; i < 8; i++) await new Promise(resolve => setImmediate(resolve));};
+test('cloud cache is bounded across seeks and never emits a stale asynchronous frame', async () => {
+    const {manifest, buffers} = fixture();
+    let shown: CloudFrame | null = null;
+    const errors: Error[] = [];
+    const pending = new Map<number, (value: Response) => void>();
+    const fetcher = (async (input: string | URL | Request) => {
+        const url = String(input);
+        if (url.endsWith('manifest.json')) return new Response(JSON.stringify(manifest));
+        const index = Number(new URL(url).pathname.slice(1).split('.')[0]);
+        return new Promise<Response>(resolve => pending.set(index, resolve));
+    }) as typeof fetch;
+    const player = new PointCloudPlayer(value => {shown = value;}, error => errors.push(error), fetcher);
+    await player.open('http://local/manifest.json', reference);
+    player.update(0); player.update(4);
+    pending.get(0)!(new Response(buffers[0])); await flush();
+    assert.equal(shown, null);
+    pending.get(4)!(new Response(buffers[4])); pending.get(5)!(new Response(buffers[5])); await flush();
+    assert.equal((shown as CloudFrame | null)?.frameIndex, 4);
+    player.update(6); pending.get(6)!(new Response(buffers[6])); pending.get(7)!(new Response(buffers[7])); await flush();
+    assert.equal((shown as CloudFrame | null)?.frameIndex, 6);
+    assert.ok(player.stats.cacheBytes <= 3 * Math.max(...buffers.map(buffer => buffer.byteLength)));
+    player.update(null); assert.equal(shown, null);
+    player.close(); assert.equal(player.stats.cacheBytes, 0); assert.deepEqual(errors, []);
+});

@@ -16,6 +16,8 @@ import {
   type LoadedCalibration,
 } from "@/calibration";
 import {useReferenceFrameForwarder} from './hooks/useReferenceFrameForwarder';
+import {usePointCloudForwarder} from './hooks/usePointCloudForwarder';
+import type {PointCloudPlayback} from './point-cloud-format';
 import { type InspectionTarget, type ViewportStats } from "./helpers/viewport3d-types";
 import {ViewportFrameSender} from './viewport-frame-transfer';
 import {hasVisibleKeypoints, KeypointPackingWorkspace} from './keypoint-storage';
@@ -140,7 +142,9 @@ function serializeWheelEvent(e: WheelEvent, rect: DOMRect) {
     },
   };
 }
-export function ThreeJsCanvas({calibration}: {calibration: LoadedCalibration | null}) {
+export function ThreeJsCanvas({calibration, pointCloud, getRecordingTime}: {calibration: LoadedCalibration | null;
+  pointCloud?: PointCloudPlayback; getRecordingTime?: () => number | null}) {
+  usePointCloudForwarder(VIEWPORT_WORKER, pointCloud, getRecordingTime);
   const camerasPaused = false;
   const {
     isLive,

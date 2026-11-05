@@ -168,6 +168,7 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     const runIds = useMemo(() => manifest?.runs.map(item => item.run_id) ?? [], [manifest]);
     const selection = useMemo<RecordingSelection>(() => ({
         cameras: run?.camera_geometry?.[group] ?? [],
+        referenceFrameId: run?.scene_reference_frames[group],
         referenceFrame: run?.scene_reference_frames[group]
             ? SpatialReferenceSchema.parse(run.reference_frames[run.scene_reference_frames[group]]) : undefined,
         runIds,
