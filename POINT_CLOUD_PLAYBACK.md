@@ -32,7 +32,7 @@ reference transform as other world geometry; it performs no camera-basis convers
 Each chunk starts with a four-byte little-endian unsigned JSON-header length,
 followed by UTF-8 header bytes, then padding to the next four-byte boundary.
 The remaining payload holds packed little-endian float32 XYZ positions in mm and
-RGB uint8 colors. Header JSON contains `schema_version`, `revision`, the full
+photo sRGB uint8 colors. Header JSON contains `schema_version`, `revision`, the full
 `reference_frame`, and `frames`. Each frame repeats all four identity/timing fields
 shown above, replacing `chunk_index` with `point_count`, `positions_offset`, and
 `colors_offset`. Offsets are byte offsets relative to the payload. XYZ offsets
@@ -57,6 +57,13 @@ displayed-frame count, requested frames initially missing from cache, cumulative
 current local/source frame, timestamp and point count. `pointCloudError` reports
 loading or validation errors. These diagnostics supplement actual native render
 timing and video/model synchronization measurements; they do not establish FPS.
+The renderer converts sRGB bytes through a precomputed lookup table into reusable
+linear float32 color attributes. Both position and color buffers have capacity for
+60,000 points (1,440,000 bytes total on CPU and on GPU). The shared postprocessing
+chain converts linear output for display once; only HDR/emissive values bloom
+[@threeColorManagement2026]. Initial and explicit framing include current cloud
+bounds; normal playback never refits the camera.
+
 Stats also include resident chunk and in-flight request counts, rendered frame
 identity, visibility, persistent geometry/attribute IDs, upload count and CPU
 attribute-copy time (`uploadMs`, `maxUploadMs`). Copy time is not GPU execution time.

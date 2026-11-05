@@ -4,6 +4,7 @@ import {BufferAttribute, BufferGeometry, DynamicDrawUsage, PointsMaterial} from 
 import {pointCloudStore, pointCloudRenderStats} from '../point-cloud-store';
 import type {CloudFrame} from '../point-cloud-format';
 import {useReferenceTransform} from '../scene/ReferenceFrame';
+import {copyCloudColors} from './cloud-colors';
 
 /** Fixed storage; each frame updates existing attributes and draw count [@threeBufferAttribute2026; @threeBufferGeometry2026]. */
 export function PointCloudRenderer() {
@@ -13,7 +14,7 @@ export function PointCloudRenderer() {
     const geometry = useMemo(() => {
         const result = new BufferGeometry();
         result.setAttribute('position', new BufferAttribute(new Float32Array(60000 * 3), 3).setUsage(DynamicDrawUsage));
-        result.setAttribute('color', new BufferAttribute(new Uint8Array(60000 * 3), 3, true).setUsage(DynamicDrawUsage));
+        result.setAttribute('color', new BufferAttribute(new Float32Array(60000 * 3), 3).setUsage(DynamicDrawUsage));
         result.setDrawRange(0, 0); return result;
     }, []);
     const material = useMemo(() => new PointsMaterial({size: 2, sizeAttenuation: false, vertexColors: true, toneMapped: false}), []);
@@ -26,7 +27,7 @@ export function PointCloudRenderer() {
         if (value) {
             const positions = geometry.getAttribute('position') as BufferAttribute;
             const colors = geometry.getAttribute('color') as BufferAttribute;
-            (positions.array as Float32Array).set(value.positions); (colors.array as Uint8Array).set(value.colors);
+            (positions.array as Float32Array).set(value.positions); copyCloudColors(colors.array as Float32Array, value.colors);
             positions.clearUpdateRanges(); colors.clearUpdateRanges();
             if (value.positions.length) {
                 positions.addUpdateRange(0, value.positions.length); colors.addUpdateRange(0, value.colors.length);

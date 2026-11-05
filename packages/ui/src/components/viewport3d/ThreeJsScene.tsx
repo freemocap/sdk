@@ -21,6 +21,7 @@ import {useViewportState} from "@/components/viewport3d/scene/ViewportStateConte
 import {useKeypointsSource} from "./KeypointsSourceContext";
 import {workerDataStore} from "./WorkerDataStore";
 import {PointCloudRenderer} from './renderers/PointCloudRenderer';
+import {OutputPass} from 'three/examples/jsm/postprocessing/OutputPass.js';
 /**
  * Calls invalidate() whenever scene data changes so the WebGL render loop
  * only fires on-demand instead of 60fps. Covers keypoints (high-frequency),
@@ -71,11 +72,14 @@ function BloomLayer() {
             new Vector2(size.width, size.height),
             1.0,    // strength — visible but not cartoonish
             0.4,    // radius — tight glow around the object
-            0.9,    // threshold — only very bright pixels bloom (CoM white squares)
+            1.0,    // Only HDR/emissive light blooms; ordinary photo whites are <= 1.
         );
         composer.addPass(bloom);
+        // Postprocessing targets are linear; convert once at display output [@threeColorManagement2026].
+        const output = new OutputPass();
+        composer.addPass(output);
         composerRef.current = composer;
-        return () => composer.dispose();
+        return () => {bloom.dispose(); output.dispose(); composer.dispose();};
     }, [gl, scene, camera, size]);
     useEffect(() => {
         const composer = composerRef.current;
