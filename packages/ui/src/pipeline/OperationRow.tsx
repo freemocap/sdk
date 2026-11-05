@@ -33,4 +33,3 @@ export function OperationRow({operation, title}: {operation: TaskOperation; titl
         {detail && <details className="text sm"><summary>Details</summary><div style={{overflowWrap: 'anywhere'}}>{detail}</div></details>}
     </div>;
 }
-

@@ -23,7 +23,10 @@ test('manual and unimplemented stages retain declared edges without pretending t
     const source=layout.boxes.get(wrap.source)!,target=layout.boxes.get(wrap.target)!;
     assert.ok(path.startsWith(`M${source.x+source.w},${source.y+portOffset(view.nodes[2],'out',wrap.sourcePort)}`));
     assert.ok(path.endsWith(`${target.x},${target.y+portOffset(view.nodes[3],'in',wrap.targetPort)}`));
-    assert.ok(layout.boxes.get('dataset')!.y>=layout.boxes.get('review')!.y+800);
+    assert.ok(layout.boxes.get('dataset')!.y>layout.boxes.get('input')!.y);
+    assert.equal(new Set([...layout.boxes.values()].map(box=>box.y)).size,2);
+    assert.ok(layout.boxes.get('dataset')!.x>layout.boxes.get('review')!.x);
+    assert.ok(layout.height>=800);
 });
 test('malformed dependencies cannot render a misleading valid workflow',()=>{
     const {graph,metadata}=fixture();

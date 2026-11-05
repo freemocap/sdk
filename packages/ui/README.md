@@ -25,12 +25,38 @@ a node ran. In particular, reusable artifacts still require application validati
 
 Keep configuration values controlled by the application; graph/list switching
 renders the same supplied content, without duplicating the settings model.
-Wrap fields in `PipelineSetting` with `id`, `label`, `description` and `children`
-to register their explanations with the graph's info expansion. `locked` makes
+Use Core's exported `SettingRow({label, info: {title, text}, control})` with
+`SettingSelectInput`, `SettingToggleSwitch`, and `ValueSelector` (optional `label`
+names the numeric input). `SettingsGroupHeading` and `SettingsSummaryChip`
+provide the same hierarchy and factual summaries as Core. Explanations belong
+in `info`, opened by `AnchoredInfo`, not visible paragraphs. The older
+`PipelineSetting` wrapper delegates to `SettingRow`. `locked` makes
 configuration inert during a run. Optional `operations: TaskOperation[]` displays
 actual retained counts and timings; omitting it produces no simulated progress.
-`onOpenArtifact(path)` delegates opening files to the host. `actions` delegates
-execution controls and their disabled reasons to the application.
+`actions` delegates execution controls to the application. Use `notice` only
+for actual validation/load/save errors, which remain visible as an alert.
+
+`PipelineWindow` (also exported as `PipelineDialog`) accepts `title`, optional
+`subtitle`, `onClose` and `children`. It retains Core's processing-window chrome
+and uses native modal focus containment. Info popovers stay in the modal's DOM
+ownership and browser top layer. The panel includes Core's left stage outline
+in both views. The graph starts in two rows of compact cards at 80–100% according to the available width;
+selecting a stage expands its shared settings. Pan/zoom and explicit `Fit all`
+remain available; changing configuration does not reset a user-controlled camera.
+
+`SidebarProcessingAction({text, onClick, disabled?, description?, iconClass?})`
+exposes Core's `ProcessMocapPanel` full-width accent action, with its existing
+`processmocap-icon`, button classes, theme colors and a 44px minimum target.
+Omit `description` when the application keeps explanatory copy behind info.
+
+| Core source under `freemocap-ui/src/` | Public SDK surface |
+| --- | --- |
+| `layout/content/SidePanelContent.tsx` → `components/control-panels/recording-info-panel/ProcessMocapPanel.tsx` → `ButtonSm`, `styles/button-sm.css`, `styles/icons.css` | `SidebarProcessingAction` |
+| `components/mocap-setup/mocap-setup-modal.tsx`, `mocap-processing.css` | `PipelineWindow`, `PipelinePanel` header/body |
+| `components/mocap-setup/processing-outline.tsx`, `stage-section.tsx` | Shared left outline and list sections |
+| `components/common/settings-layout/` | `SettingRow`, select, toggle, headings, summary chips and settings CSS |
+| `components/ui-components/ValueSelector.tsx`, `AnchoredInfo.tsx` | Numeric editor and help popovers |
+| `components/processing-graph/ProcessingGraphView.tsx`, `processing-graph.css` | Camera, focus, typed ports, setting callouts and graph styling |
 
 The panel checks stage IDs, required port bindings and dependency order before
 rendering. This is display validation, not a replacement for the server's graph

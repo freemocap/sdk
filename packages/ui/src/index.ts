@@ -10,3 +10,12 @@ export {default as ButtonSm, type ButtonSmProps} from './components/ui-component
 export {NumberField, ControlSection, Legend, type NumberFieldProps, type ControlSectionProps, type LegendProps, type LegendItem} from './controls/Controls';
 export {PipelinePanel, PipelineSetting} from './pipeline/PipelinePanel';
 export type {PipelinePanelProps, PipelineStagePresentation, PipelineGraph} from './pipeline/model';
+export {SidebarProcessingAction, type SidebarProcessingActionProps} from './controls/SidebarProcessingAction';
+export {PipelineDialog, PipelineDialog as PipelineWindow} from './pipeline/PipelineDialog';
+export {default as SettingRow} from './pipeline/settings/setting-row';
+export {default as SettingSelectInput} from './pipeline/settings/setting-select-input';
+export {default as SettingToggleSwitch} from './pipeline/settings/setting-toggle-switch';
+export {default as SettingsGroupHeading} from './pipeline/settings/settings-group-heading';
+export {default as SettingsSummaryChip} from './pipeline/settings/settings-summary-chip';
+export {default as AnchoredInfo} from './components/ui-components/AnchoredInfo';
+export {default as ValueSelector} from './components/ui-components/ValueSelector';

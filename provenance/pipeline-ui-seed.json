@@ -32,7 +32,79 @@
     {
       "path": "freemocap-ui/src/components/pipeline-progress/ProcessingTiming.tsx",
       "sha256": "dd8a38caa93690ac8d907bf6e8a5eb3c35cc39259ba9f28dd6a852640b356a59"
+    },
+    {
+      "path": "freemocap-ui/src/layout/content/SidePanelContent.tsx",
+      "sha256": "258632866f233efd711b2d0d74c3be29a47d83e5a07ada35701eac6db50c9cc0"
+    },
+    {
+      "path": "freemocap-ui/src/components/control-panels/recording-info-panel/ProcessMocapPanel.tsx",
+      "sha256": "ebcfc63436bd66fbccd9c9075a133a84cd34e07303585b1d628e7fc9efee5585"
+    },
+    {
+      "path": "freemocap-ui/src/components/ui-components/ButtonSm.tsx",
+      "sha256": "20432688e99788e5cc88dc89764eaf74c85e3b555e6cb7621c330048c2b28688"
+    },
+    {
+      "path": "freemocap-ui/src/styles/button-sm.css",
+      "sha256": "48f1ab946efc6c52e7b7863fa3a4d82e9e26694dbdc62c7e723ea6093415893b"
+    },
+    {
+      "path": "freemocap-ui/src/styles/icons.css",
+      "sha256": "731cb66ec0e4a22e9d9a3d7c13e4fbe02f413ed834e8adcb36977acdad1df92b"
+    },
+    {
+      "path": "freemocap-ui/src/components/common/settings-layout/setting-row.tsx",
+      "sha256": "04eb3cf8f95d2892d5cd5bce481285d117c0bae668fc1bbd9c7efba811fb98ba"
+    },
+    {
+      "path": "freemocap-ui/src/components/common/settings-layout/setting-select-input.tsx",
+      "sha256": "563991c70e5db6e91e33510edb9c9cf7dd19a18001eae8fc6406ab6b518e45ec"
+    },
+    {
+      "path": "freemocap-ui/src/components/common/settings-layout/setting-toggle-switch.tsx",
+      "sha256": "6edeaea1d83eea201a650bea8cf3c890e6b88dd9bb6107e7d3dfd26fac69ea60"
+    },
+    {
+      "path": "freemocap-ui/src/components/common/settings-layout/settings-group-heading.tsx",
+      "sha256": "e0892a53dc7ca5f1bef6cafc834398cc3476e19d99a278fa6d1784d0f0c82ef8"
+    },
+    {
+      "path": "freemocap-ui/src/components/common/settings-layout/settings-summary-chip.tsx",
+      "sha256": "3a3ab33a80c77d74815818adc6edf8e074ac3c52e0222950832a6aa5aa4c484f"
+    },
+    {
+      "path": "freemocap-ui/src/components/common/settings-layout/settings-layout.css",
+      "sha256": "88cf3a70575afcce69c46e8822844b10aceae2e5e235b517fa9c8bfd5668f708"
+    },
+    {
+      "path": "freemocap-ui/src/hooks/floatingOnboarding.tsx",
+      "sha256": "b7004f864e5bd55321be24722ce7e70fcff8044b1c52759e4fcf9e67789a916a"
+    },
+    {
+      "path": "freemocap-ui/src/hooks/useDraggableTooltips.tsx",
+      "sha256": "3ac71d0b957d53974fa71800e22f9d9c69edec350956919dbad1589896cbad9a"
+    },
+    {
+      "path": "freemocap-ui/src/components/ui-components/AnchoredInfo.tsx",
+      "sha256": "0927cc8b37ac45656c86d7c8274919dc0765e7e3696cf41be5509c2ab099212c"
+    },
+    {
+      "path": "freemocap-ui/src/components/ui-components/ValueSelector.tsx",
+      "sha256": "a1226065838d02c815674a471d5b62ce2e6d443615b847b36c9a104916bb9772"
+    },
+    {
+      "path": "freemocap-ui/src/components/mocap-setup/mocap-processing.css",
+      "sha256": "4a2a5d54b0253f4a0daf41488b0a53b50abbc64d86ddcdfac7579e559cac582b"
+    },
+    {
+      "path": "freemocap-ui/src/components/mocap-setup/mocap-setup-modal.tsx",
+      "sha256": "41572f8d1ebfefc50f2a1c8b93a743ed0b47ef7f2a1d9b420bd1982c63362616"
+    },
+    {
+      "path": "freemocap-ui/src/components/mocap-setup/processing-outline.tsx",
+      "sha256": "b84ef3dd1661c4a731be3e1f7d88bed21f4650a881924280389ee31888eecc98"
     }
   ],
-  "adaptation": "Preserve graph camera, pointer, measured card, port and explain machinery. Inject application semantics/settings, generalize layout from mocap IDs to ordered workflow. Shared list sections and operation rows without Redux or Electron dependencies. Core unchanged."
+  "adaptation": "Preserve Core graph camera, pointer, measured cards, typed ports and explanation machinery. Inject application semantics/settings, generalize layout from mocap IDs to ordered workflow. Reuse actual MocapSetupModal header/body, ProcessingOutline and StageSection composition plus SettingRow/Select/Toggle/ValueSelector/AnchoredInfo and complete CSS. Core unchanged. Final user layout amendment: two rows of compact250px cards at80\u2013100percent default; focused shared settings360px; explicit FitAll overview only. SidebarProcessingAction retains actual ProcessMocapPanel button/icon/accent/fullwidth structure with44px target. Native dialog adds focus containment/return; floating info portal follows owning dialog; ValueSelector adds optional accessible label."
 }

@@ -19,6 +19,7 @@ function roundToStep(
 }
 
 interface InputWithUnitProps {
+    label?: string;
     value: number;
     onChange: (value: number) => void;
     unit?: string;
@@ -30,6 +31,7 @@ interface InputWithUnitProps {
 
 const InputWithUnit: React.FC<InputWithUnitProps> = ({
     value,
+    label,
     onChange,
     unit = "",
     min = 1,
@@ -119,6 +121,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
             <input
                 ref={inputRef}
                 type="number"
+                aria-label={label}
                 value={inputText}
                 min={min}
                 max={max}
@@ -143,6 +146,7 @@ const InputWithUnit: React.FC<InputWithUnitProps> = ({
 };
 
 interface ValueSelectorProps {
+    label?: string;
     value?: number;
     unit?: string;
     min?: number;
@@ -154,6 +158,7 @@ interface ValueSelectorProps {
 
 const ValueSelector: React.FC<ValueSelectorProps> = ({
     value,
+    label,
     unit = "",
     min = 1,
     max = 999,
@@ -196,6 +201,7 @@ const ValueSelector: React.FC<ValueSelectorProps> = ({
             />
 
             <InputWithUnit
+                label={label}
                 value={currentValue}
                 onChange={onChange ?? (() => {})}
                 unit={unit}

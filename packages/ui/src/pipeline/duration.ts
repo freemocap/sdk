@@ -6,4 +6,3 @@ export function formatProcessingDuration(seconds: number): string {
     const minutes = Math.floor((rounded % 3600) / 60);
     return `${hours ? `${hours} h ` : ''}${minutes} m ${rounded % 60} s`;
 }
-

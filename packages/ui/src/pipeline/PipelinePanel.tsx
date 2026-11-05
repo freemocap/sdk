@@ -1,67 +1,70 @@
-import {useId, useState, type ReactNode} from 'react';
+import {useId, useState, useRef, type ReactNode} from 'react';
 import ProcessingGraphView, {type GraphFocus} from './ProcessingGraphView';
 import {buildStageGraph, type PipelinePanelProps, type GraphNode, type ProcessingSection} from './model';
-import {useExplainTarget} from './explain-registry';
+import SettingRow from './settings/setting-row';
+import AnchoredInfo from '../components/ui-components/AnchoredInfo';
 import {OperationRow} from './OperationRow';
 
-/** Shared setting content registers with Core's graph explanation scope. Values remain app-owned. */
-export function PipelineSetting({id, label, description, children}: {
-    id:string; label:string; description:string; children:ReactNode;
-}) {
-    const target=useExplainTarget(`setting:${id}`,label,description,'right');
-    return <div ref={target} className="sdk-pipeline-setting"><div>{children}</div>
-        <details><summary aria-label={`About ${label}`}>About {label}</summary><p>{description}</p></details>
-    </div>;
+/** Legacy wrapper delegates to the same Core row/info primitive as new forms. */
+export function PipelineSetting({label,description,children}:{id:string;label:string;description:string;children:ReactNode}) {
+    return <SettingRow label={label} info={{title:label,text:description}} control={children}/>;
 }
 
-// Core StageSection's expanded section lifecycle; app switches/settings replace mocap-specific controls.
-function StageSection({node,section,locked,onFocus,onOpenArtifact}:{node:GraphNode;section:ProcessingSection;locked:boolean;onFocus:()=>void;onOpenArtifact?: (path:string)=>void}) {
-    const [expanded,setExpanded]=useState(true);
-    const bodyId=useId();
-    return <section className="sdk-pipeline-section" aria-label={section.title} data-stage-id={node.id}>
-        <div className="sdk-pipeline-section-heading">
-            <button type="button" aria-expanded={expanded} aria-controls={bodyId} onClick={()=>setExpanded(!expanded)}>
-                <span aria-hidden="true">{expanded?'▾':'▸'}</span><span>{section.number}</span><h2>{section.title}</h2>
+// Core StageSection, with application-owned settings and status instead of Mocap toggles.
+function StageSection({node,section,locked}:{node:GraphNode;section:ProcessingSection;locked:boolean}) {
+    const [expanded,setExpanded]=useState(true);const bodyId=useId();
+    return <section className={`settings-section mp-section sdk-stage-${node.presentation.kind}`} aria-label={section.title} data-stage-id={node.id}>
+        <div className="settings-section-header mp-section-header">
+            <button type="button" className="mp-section-title" aria-expanded={expanded} aria-controls={bodyId} onClick={()=>setExpanded(!expanded)}>
+                <span className="settings-section-chevron"/><span className="mp-outline-number">{section.number}</span>
+                <h2 className="settings-section-title">{section.title}</h2>
             </button>
-            <span className="pg-pill">{node.presentation.availability}</span>
-            <button type="button" onClick={onFocus} aria-label={`Show ${section.title} in graph`}>↗ Graph</button>
+            <AnchoredInfo title={section.title} text={<>{node.presentation.description}<p>{node.presentation.reason}</p>
+                {node.presentation.artifacts?.map(path=><p key={path}>{path}</p>)}</>}/>
+            <span className="settings-section-summary"><span className="settings-summary-chip">{node.presentation.availability}</span>{node.presentation.summary}</span>
         </div>
-        <div id={bodyId} hidden={!expanded}>
-            <p className="sdk-pipeline-description">{node.presentation.description}</p>
-            <div className="sdk-pipeline-stage-status"><p>{node.presentation.reason}</p>{node.presentation.summary}</div>
-            <div className="sdk-pipeline-port-list"><span>Inputs: {node.inputs.length ? node.inputs.map(key=>JSON.parse(key)[2]).join(', ') : 'Application inputs'}</span>
-                <span>Outputs: {node.outputs.map(key=>JSON.parse(key)[2]).join(', ') || 'None'}</span></div>
-            <div className="sdk-pipeline-configuration" inert={locked}>{section.content}</div>
-            {node.operation && <div className="sdk-pipeline-operation"><OperationRow operation={node.operation} title={node.operation.label}/></div>}
-            {!!node.presentation.artifacts?.length && <div className="sdk-pipeline-artifacts">{node.presentation.artifacts.map(path=>onOpenArtifact
-                ? <button key={path} type="button" onClick={()=>onOpenArtifact(path)} title={path}>{path}</button>
-                : <span key={path}>{path}</span>)}</div>}
+        <div id={bodyId} className="settings-section-body" hidden={!expanded} inert={locked}>
+            {section.content}
+            {node.operation && <OperationRow operation={node.operation} title={node.operation.label}/>}
         </div>
     </section>;
 }
 
-/** Real typed graph and one app-owned set of settings, presented as Core's graph or section list. */
+/** Core MocapSetupModal composition: run header, left ProcessingOutline, StageSection list or graph. */
 export function PipelinePanel({graph,nodePresentation,view,onViewChange,locked=false,notice,actions,operations=[],onOpenArtifact}:PipelinePanelProps) {
     const [focus,setFocus]=useState<GraphFocus|null>(null);
-    let visual;
-    try {visual=buildStageGraph(graph,nodePresentation,operations);} catch(error) {
+    const [active,setActive]=useState<string|null>(null);
+    const sectionsRef=useRef(new Map<string,HTMLDivElement>());
+    let visual;try {visual=buildStageGraph(graph,nodePresentation,operations);} catch(error) {
         return <p role="alert">{error instanceof Error ? error.message : String(error)}</p>;
     }
     const sections:ProcessingSection[]=visual.nodes.map((node,index)=>({id:node.id,number:index+1,title:node.presentation.label,
         content:node.presentation.configuration ?? null,presentation:node.presentation}));
+    const pick=(id:string)=>{setActive(id);if(view==='graph')setFocus({id,explain:false});
+        else sectionsRef.current.get(id)?.scrollIntoView({behavior:'smooth',block:'start'});};
     return <section className="sdk-pipeline-panel" aria-label="Pipeline control panel">
-        <div className="sdk-pipeline-toolbar">
-            <div role="group" aria-label="Pipeline view">
-                <button type="button" aria-pressed={view==='list'} onClick={()=>onViewChange('list')}>List</button>
-                <button type="button" aria-pressed={view==='graph'} onClick={()=>onViewChange('graph')}>Graph</button>
-            </div>{actions}
+        <div className="mp-head">
+            <div role="group" aria-label="Pipeline view" className="mp-seg">{(['list','graph'] as const).map(option=>
+                <button key={option} type="button" aria-pressed={view===option} className={view===option?'on':''}
+                    onClick={()=>onViewChange(option)}>{option==='list'?'List':'Graph'}</button>)}</div>
+            <div className="sdk-pipeline-actions">{actions}</div>
         </div>
-        {notice && <div className="sdk-pipeline-notice">{notice}</div>}
-        <div className="sdk-pipeline-body">
-            {view==='graph' ? <ProcessingGraphView graph={visual} sections={sections} notice={null} locked={locked}
-                focus={focus} onFocus={setFocus} onOpenArtifact={onOpenArtifact}/> :
-                <div className="sdk-pipeline-list">{visual.nodes.map((node,index)=><StageSection key={node.id} node={node} section={sections[index]}
-                    locked={locked} onOpenArtifact={onOpenArtifact} onFocus={()=>{setFocus({id:node.id,explain:false});onViewChange('graph');}}/>)}</div>}
+        {notice && <div role="alert" className="sdk-pipeline-validation">{notice}</div>}
+        <div className="mp-body">
+            <nav className="mp-outline" aria-label="Workflow stages"><span className="mp-outline-heading">Pipeline</span>
+                <ul>{sections.map(section=><li key={section.id} className={`mp-outline-row${(view==='graph'?focus?.id:active)===section.id?' active':''}`}>
+                    <button type="button" className="mp-outline-link" title={section.title} onClick={()=>pick(section.id)}>
+                        <span className="mp-outline-number">{section.number}</span>{section.title}</button>
+                </li>)}</ul>
+            </nav>
+            <main className="mp-main">
+                {view==='graph'?<ProcessingGraphView graph={visual} sections={sections} notice={null} locked={locked}
+                    focus={focus} onFocus={setFocus} onOpenArtifact={onOpenArtifact}/>:
+                    <div className="mp-list settings-layout">{visual.nodes.map((node,index)=><div key={node.id} ref={element=>{
+                        if(element)sectionsRef.current.set(node.id,element);else sectionsRef.current.delete(node.id);}}>
+                        <StageSection node={node} section={sections[index]} locked={locked}/>
+                    </div>)}</div>}
+            </main>
         </div>
     </section>;
 }

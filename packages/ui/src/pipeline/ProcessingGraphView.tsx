@@ -6,6 +6,7 @@ import {useExplainScope, useExplainTarget, type ExplainEntry} from './explain-re
 import {type DataKey, type GraphNode, type NodeId, type NodeState, type StageGraph, type ProcessingSection, type PortData} from './model';
 import {type Box, NODE_WIDTH, ROWS, type StageLayout, stageLayout} from './stage-layout';
 import {OperationRow} from './OperationRow';
+import AnchoredInfo from '../components/ui-components/AnchoredInfo';
 
 export interface GraphFocus {id: NodeId; explain: boolean}
 interface ProcessingGraphViewProps {
@@ -40,17 +41,16 @@ function Node({node,section,box,focused,explaining,locked,onMeasure,onFocus,onEn
     },[node.id,onMeasure]);
     return <div ref={element} role="group" aria-label={section.title} data-stage-id={node.id}
         className={`pg-node ${stateClass(node.state)}${focused?' focused':''}${explaining?' explaining':''}`}
-        style={{left:box.x,top:box.y,width:NODE_WIDTH}}><Scope>
+        style={{left:box.x,top:box.y,width:box.w}}><Scope>
         <Header node={node} section={section} focused={focused} explaining={explaining} onFocus={onFocus}/>
         <div className="pg-ports" style={{paddingTop:ROWS.portsPad,paddingBottom:ROWS.portsPad}}>
             {node.outputs.map(key=><Port key={key} data={data[key]} direction="out"/>)}
             {node.inputs.map(key=><Port key={key} data={data[key]} direction="in"/>)}
         </div>
-        <div className="sdk-pipeline-stage-status"><span className="pg-pill">{node.presentation.availability}</span><p>{node.presentation.reason}</p>{node.presentation.summary}</div>
-        <div className="pg-node-settings settings-layout" inert={locked}>{section.content}</div>
+        <div className="sdk-pipeline-stage-status"><span className="pg-pill">{node.presentation.availability}</span><AnchoredInfo title={`${section.title} availability`} text={<>{node.presentation.reason}{node.presentation.artifacts?.map(path=><p key={path}>{path}</p>)}</>}/>{node.presentation.summary}</div>
+        {focused ? <div className="pg-node-settings settings-layout" inert={locked}>{section.content}</div>
+            : <button type="button" className="sdk-stage-settings-button" onClick={()=>onFocus({id:node.id,explain:false})}>Open stage settings</button>}
         {node.operation && <div className="sdk-pipeline-operation"><OperationRow operation={node.operation} title={node.operation.label}/></div>}
-        {!!node.presentation.artifacts?.length && <div className="pg-disk"><span>Artifacts</span>{node.presentation.artifacts.map(path=>
-            onOpenArtifact?<button key={path} className="pg-file" title={path} onClick={()=>onOpenArtifact(path)}>{path.split(/[\\/]/).pop()}</button>:<span key={path} title={path}>{path.split(/[\\/]/).pop()}</span>)}</div>}
         </Scope></div>;
 }
 function Header({node,section,focused,explaining,onFocus}:{node:GraphNode;section:ProcessingSection;focused:boolean;explaining:boolean;onFocus:(focus:GraphFocus|null)=>void}) {
@@ -154,7 +154,7 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
     const onMeasure = useCallback((id: NodeId, height: number) => setHeights(previous => previous[id] === height ? previous : {...previous, [id]: height}), []);
     const entryGetters = useRef(new Map<NodeId, () => ExplainEntry[]>());
     const onEntries = useCallback((id: NodeId, entries: () => ExplainEntry[]) => {entryGetters.current.set(id, entries);}, []);
-    const layout: StageLayout | null = useMemo(() => 'error' in graph ? null : stageLayout(graph, heights), [graph, heights]);
+    const layout: StageLayout | null = useMemo(() => 'error' in graph ? null : stageLayout(graph, heights, focus?.id), [graph, heights, focus?.id]);
 
     const canvasRef = useRef<HTMLDivElement>(null);
     const [size, setSize] = useState({w: 0, h: 0});
@@ -166,6 +166,7 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
         return () => observer.disconnect();
     }, []);
     const [camera, setCamera] = useState<Camera | null>(null);
+    const [overview, setOverview] = useState(false);
     const [animate, setAnimate] = useState(false);
     const [dragging, setDragging] = useState(false);
     const drag = useRef<{x: number; y: number; camera: Camera} | null>(null);
@@ -176,7 +177,8 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
     };
     const target: Camera = !layout || !size.w ? {x: 0, y: 0, z: 1}
         : focus && layout.boxes.has(focus.id) ? fitBox(layout.boxes.get(focus.id)!, focus.explain ? 0.42 : 1, MAX_ZOOM)
-            : fitBox({x: 0, y: 0, w: layout.width, h: layout.height}, 1, 1);
+            : overview ? fitBox({x: 0, y: 0, w: layout.width, h: layout.height}, 1, 1)
+                : {x: 0, y: 0, z: Math.max(0.8, Math.min(1, size.w / layout.width))};
     // A focus change hands the camera back to the target and animates there; the reader's own panning and zooming is immediate.
     const previousFocus = useRef(focus);
     useEffect(() => {
@@ -230,7 +232,7 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
     const byId = new Map(sections.map(section => [section.id, section]));
     return <div ref={canvasRef} className={`pg-canvas${dragging ? ' dragging' : ''}${focus?.explain ? ' explaining' : ''}`} onWheel={onWheel}
         onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp} onPointerCancel={onPointerUp}
-        tabIndex={0} onKeyDown={event => {if (event.key === 'Escape' && focus) onFocus(null);}} aria-label="Processing graph. Drag to pan, scroll to zoom.">
+        tabIndex={0} onKeyDown={event => {if (event.key === 'Escape' && focus) {event.preventDefault();event.stopPropagation();onFocus(null);}}} aria-label="Processing graph. Drag to pan, scroll to zoom.">
         {'error' in graph && <p role="alert" className="pg-notice warn">{graph.error}</p>}
         {notice}
         {layout && 'nodes' in graph && size.w > 0 && <div className={`pg-world${animate ? ' animate' : ''}`}
@@ -253,7 +255,8 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
             <button type="button" aria-label="Zoom out" onClick={() => zoomAbout(cam.z / 1.2, size.w / 2, size.h / 2)}>−</button>
             <span>{Math.round(cam.z * 100)}%</span>
             <button type="button" aria-label="Zoom in" onClick={() => zoomAbout(cam.z * 1.2, size.w / 2, size.h / 2)}>+</button>
-            <button type="button" onClick={() => {onFocus(null); setCamera(null);}}>Fit all</button>
+            <button type="button" onClick={() => {onFocus(null); setOverview(false); setCamera({x:0,y:0,z:1});}}>100%</button>
+            <button type="button" onClick={() => {onFocus(null); setOverview(true); setCamera(null);}}>Fit all</button>
         </div>
     </div>;
 }
