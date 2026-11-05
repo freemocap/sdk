@@ -3,6 +3,7 @@ import {usePlaybackResources} from '@/playback-resources';
 import {KeypointsSourceProvider, type KeypointsSource, type KeypointsFrame, type KeypointsCallback, type ModelsCallback, type ModelFramesCallback} from './KeypointsSourceContext';
 import type {ModelDefinition} from '@freemocap/client';
 import type {ResolvedModelFrame} from '@freemocap/client';
+import {SpatialReferenceSchema} from '@freemocap/client/recording';
 import {prepareRecordedKeypoints, prepareRecordedModelFrame, RecordingChannelKind, type PlaybackManifest, type PlaybackChannelData, type PlaybackRun} from '@/services/recording/playback-data';
 import {PlaybackLoadResultSchema} from '@/services/recording/playback-parquet-messages';
 import {RecordingSelectionContext, type RecordingSelection} from './RecordingSelectionContext';
@@ -167,6 +168,8 @@ export function RecordingPlaybackProvider({recordingId, recordingParentDirectory
     const runIds = useMemo(() => manifest?.runs.map(item => item.run_id) ?? [], [manifest]);
     const selection = useMemo<RecordingSelection>(() => ({
         cameras: run?.camera_geometry?.[group] ?? [],
+        referenceFrame: run?.scene_reference_frames[group]
+            ? SpatialReferenceSchema.parse(run.reference_frames[run.scene_reference_frames[group]]) : undefined,
         runIds,
         runId,
         selectRun: (nextRunId: number) => {

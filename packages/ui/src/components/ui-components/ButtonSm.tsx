@@ -3,7 +3,7 @@ import clsx from "clsx";
 import TooltipSurface from './TooltipSurface';
 import { TooltipPosition } from "./ui-component-types";
 
-interface ButtonSmProps {
+export interface ButtonSmProps {
   iconClass?: string;
   buttonType?: string;
   text: string;

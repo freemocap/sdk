@@ -19,6 +19,7 @@ test('playback joins dynamic and static channels through declared source identit
         reference_frame: 'world', names: ['child', 'root'],
     };
     const run: PlaybackRun = {
+        reference_frames: {world: {name: 'world', basis: 'blender_x_right_y_forward_z_up', units: 'mm'}}, scene_reference_frames: {cameras: 'world'},
         run_id: 0, models: [model],
         model_sources: {'recorded-instance': model.model_id},
         channels: [], timelines: [], media: [],
@@ -84,6 +85,7 @@ test('playback preserves distinct tracker, mapped and rigid trajectories across 
     const model = ModelDefinitionSchema.parse({model_id: 'subject', segments: [],
         landmarks: [{name: 'wrist'}], connections: []});
     const run: PlaybackRun = {run_id: 2, models: [model], model_sources: {'model:subject': 'subject'},
+        reference_frames: {world: {name: 'world', basis: 'blender_x_right_y_forward_z_up', units: 'mm'}}, scene_reference_frames: {mocap: 'world'},
         channels: [], static_channels: [], timelines: [], media: []};
     const channel = (kind: RecordingChannelKind, source: string, name: string, xyz: number[]): PlaybackChannelData => ({
         channel: {sensor_group: 'mocap', source, reference_frame: 'world', kind, names: [name],

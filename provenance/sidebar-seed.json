@@ -6,7 +6,11 @@
     "freemocap-ui/src/components/playback/RecordingBrowserSection.tsx",
     "freemocap-ui/src/components/control-panels/server-connection/ServerConnectionStatus.tsx",
     "freemocap-ui/src/components/ui-components/DropdownButton.tsx",
-    "freemocap-ui/src/layout/content/SidePanelContent.tsx"
+    "freemocap-ui/src/layout/content/SidePanelContent.tsx",
+    "freemocap-ui/src/components/ui-components/ButtonSm.tsx",
+    "freemocap-ui/src/components/ui-components/SubactionHeader.tsx",
+    "freemocap-ui/src/styles/components.css: input-with-unit, input-field",
+    "freemocap-ui/src/styles/button-sm.css"
   ],
   "adaptations": [
     "Recording toolbar, filters, multi-field sorting, compact selected metadata rows and expandable details use injected entries/actions",

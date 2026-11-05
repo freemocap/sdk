@@ -81,6 +81,32 @@ class PlaybackRun(Descriptor):
     timelines: tuple[RecordingTimeline, ...]
     media: tuple[PlaybackMedia, ...]
     camera_geometry: dict[str, tuple[dict[str, JsonValue], ...]] = Field(default_factory=dict)
+    # Retain Core's named reference definitions; never infer a basis from an ID.
+    reference_frames: dict[str, dict[str, JsonValue]]
+    # One shared world frame for the cameras and world-space display channels.
+    scene_reference_frames: dict[str, str]
+
+    @model_validator(mode="after")
+    def references(self):
+        for group, name in self.scene_reference_frames.items():
+            reference = self.reference_frames.get(name)
+            if reference is None or reference.get("name") != name:
+                raise ValueError("Scene requires a named reference definition")
+            if reference.get("basis") != "blender_x_right_y_forward_z_up" or reference.get("units") != "mm":
+                raise ValueError("Display scene requires Blender basis in mm at publication")
+        for group in self.camera_geometry:
+            if group not in self.scene_reference_frames:
+                raise ValueError("Camera world poses require an explicit scene reference")
+        for channel in (*self.channels, *(RecordingChannel.model_validate(item["channel"]) for item in self.static_channels)):
+            if channel.reference_frame is not None and channel.reference_frame not in self.reference_frames:
+                raise ValueError("Unknown channel reference frame")
+            if channel.kind in {"LANDMARKS_3D", "RAW_KEYPOINTS_3D", "MAPPED_KEYPOINTS_3D", "SEGMENT_ORIGINS", "DERIVED_POINTS", "ROTATIONS_WORLD"}:
+                if channel.reference_frame is None or self.scene_reference_frames.get(channel.sensor_group) != channel.reference_frame:
+                    raise ValueError("World display channels and cameras must share the declared scene frame")
+                expected = "1" if channel.kind == "ROTATIONS_WORLD" else "mm"
+                if any(unit != expected for unit in channel.components.values()):
+                    raise ValueError("World display channel units disagree with scene")
+        return self
 
 
 class PlaybackManifest(Descriptor):

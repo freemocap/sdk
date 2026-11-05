@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import type {CalibrationCameraData} from '@/calibration';
+import type {SpatialReference} from '@freemocap/client/recording';
 
 /**
  * Which saved result and sensor group a recording's viewport is showing, plus the
@@ -8,6 +9,7 @@ import type {CalibrationCameraData} from '@/calibration';
  */
 export interface RecordingSelection {
     cameras?: CalibrationCameraData[];
+    referenceFrame?: SpatialReference;
     runIds: readonly number[];
     runId: number | null;
     selectRun: (runId: number) => void;

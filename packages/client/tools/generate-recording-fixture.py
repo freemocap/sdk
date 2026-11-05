@@ -32,6 +32,8 @@ output = pa.BufferOutputStream()
 pq.write_table(pa.Table.from_pylist(rows, schema=schema), output, compression="zstd", row_group_size=3)
 manifest = dict(recording_id="reader-fixture", revision="authored-fixture-v1", selected_run_id=0,
                 runs=[dict(run_id=0, model_sources={}, models=[], channels=channels,
+                           reference_frames={'world': {'name': 'world', 'basis': 'blender_x_right_y_forward_z_up', 'units': 'mm'}},
+                           scene_reference_frames={'body': 'world'},
                            static_channels=[], timelines=[], media=[])])
 Path(sys.argv[1]).write_text(json.dumps(dict(pyarrow_version=pa.__version__, manifest=manifest,
     parquet_base64=base64.b64encode(output.getvalue().to_pybytes()).decode("ascii")), indent=2)+"\n", encoding="utf-8")

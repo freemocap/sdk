@@ -11,7 +11,7 @@ export function useReferenceFrameForwarder(
     useEffect(() => {
         target.postMessage({
             type: 'calibrationScene',
-            data: {calibration: !isLive && selection ? {cameras: selection.cameras ?? []} : calibration,
+            data: {calibration: !isLive && selection ? {cameras: selection.cameras ?? [], referenceFrame: selection.referenceFrame} : calibration,
                 referenceTransform: null},
         });
     }, [target, isLive, calibration, selection]);

@@ -6,3 +6,5 @@ export {LogTerminal, type LogTerminalProps} from './logs/LogTerminal';
 export {BottomLogPanel, type BottomLogPanelProps} from './logs/BottomLogPanel';
 export {RecordingBrowser, type RecordingBrowserProps, type BrowserEntry} from './browser/RecordingBrowser';
 export {ServerConnectionStatus, type ServerConnectionStatusProps} from './connection/ServerConnectionStatus';
+export {default as ButtonSm, type ButtonSmProps} from './components/ui-components/ButtonSm';
+export {NumberField, ControlSection, Legend, type NumberFieldProps, type ControlSectionProps, type LegendProps, type LegendItem} from './controls/Controls';

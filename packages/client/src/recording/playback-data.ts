@@ -38,13 +38,37 @@ export const RecordingStaticChannelSchema = z.object({
     channel: RecordingChannelSchema, values: z.record(z.string(), z.record(z.string(), z.number())),
 });
 export type RecordingStaticChannel = z.infer<typeof RecordingStaticChannelSchema>;
+/** Core SpatialReference fields, preserved rather than inferred from channel names. */
+export const SpatialReferenceSchema = z.object({
+    name: z.string().min(1), basis: z.literal('blender_x_right_y_forward_z_up'), units: z.literal('mm'),
+}).passthrough();
+export type SpatialReference = z.infer<typeof SpatialReferenceSchema>;
 export const PlaybackRunSchema = z.object({
+    reference_frames: z.record(z.string(), z.record(z.string(), z.unknown())),
+    scene_reference_frames: z.record(z.string(), z.string()),
     camera_geometry: z.record(z.string(), z.array(CalibrationCameraDataSchema)).optional(),
     model_sources: z.record(z.string(), z.string()),
     calibration_updates: z.record(z.string(), CalibrationUpdateRequestSchema).optional(),
     run_id: z.number().int().nonnegative(), models: z.array(ModelDefinitionSchema),
     channels: z.array(RecordingChannelSchema), static_channels: z.array(RecordingStaticChannelSchema),
     timelines: z.array(RecordingTimelineSchema), media: z.array(PlaybackMediaSchema),
+}).superRefine((run, context) => {
+    const issue = (message: string): void => {context.addIssue({code: 'custom', message});};
+    for (const [group, name] of Object.entries(run.scene_reference_frames)) {
+        const result = SpatialReferenceSchema.safeParse(run.reference_frames[name]);
+        if (!result.success || result.data.name !== name) issue(`Invalid scene reference for ${group}`);
+    }
+    for (const group of Object.keys(run.camera_geometry ?? {})) {
+        if (!run.scene_reference_frames[group]) issue(`Camera world poses lack scene reference: ${group}`);
+    }
+    for (const channel of [...run.channels, ...run.static_channels.map(item => item.channel)]) {
+        if (channel.reference_frame !== null && !run.reference_frames[channel.reference_frame]) issue('Unknown channel reference frame');
+        if (['LANDMARKS_3D', 'RAW_KEYPOINTS_3D', 'MAPPED_KEYPOINTS_3D', 'SEGMENT_ORIGINS', 'DERIVED_POINTS', 'ROTATIONS_WORLD'].includes(channel.kind)) {
+            if (channel.reference_frame === null || run.scene_reference_frames[channel.sensor_group] !== channel.reference_frame) issue('World display channels and cameras must share the declared scene frame');
+            const unit = channel.kind === 'ROTATIONS_WORLD' ? '1' : 'mm';
+            if (Object.values(channel.components).some(value => value !== unit)) issue('World display channel units disagree with scene');
+        }
+    }
 });
 export type PlaybackRun = z.infer<typeof PlaybackRunSchema>;
 export const PlaybackManifestSchema = z.object({

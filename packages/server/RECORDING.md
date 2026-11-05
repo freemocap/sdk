@@ -12,6 +12,23 @@ must have a `RecordingTimeline` whose source is `timing:<sensor_group>`.
 are NaN, serialized as null; rotations use unit `w,x,y,z` quaternions or all NaN.
 The UI model schema remains the authority for renderable model definitions.
 
+Each run retains `reference_frames`, keyed by the exact channel reference IDs,
+and `scene_reference_frames`, mapping each displayed sensor group to its shared
+world frame. A display reference uses the maintained Core spatial definition:
+`{name: "blender_world", basis: "blender_x_right_y_forward_z_up", units: "mm"}`.
+The ID is application-chosen; its meaning comes from the definition. Alignment
+and additional-transform provenance can be retained alongside these fields.
+Convert source measurements once at publication. Saved world coordinates already
+include that conversion; the viewer must not apply provenance transforms again.
+
+Camera `world_position` is the optical center in that frame, in millimeters;
+`world_orientation` maps optical camera coordinates into that world frame.
+Extrinsics describe the inverse world-to-camera transform. Cameras and rendered
+world position/rotation channels must share the group's declared scene frame.
+The renderer applies those poses directly, without a camera-only axis offset.
+These fields are required: regenerate derived playback from source data when
+updating the producer, rather than inferring a missing convention.
+
 Call `write_playback(path=..., manifest=..., samples=..., provenance=...)` in a
 staging directory. It writes the established tall display columns in bounded
 batches and embeds the manifest and provenance under `freemocap.playback`.

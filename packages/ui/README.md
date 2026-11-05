@@ -1,5 +1,22 @@
 # FreeMoCap playback UI
 
+## Themed controls and scene legend
+
+Import `@freemocap/ui/styles.css` once. `NumberField` takes `label`, a string or
+number `value`, `onChange(value: string)`, and optional `min`, `max`, `step`,
+`disabled`, and `description`. It uses Core's input container, labels and theme.
+The app owns parsing and validation, including empty or incomplete input.
+`ButtonSm` is the existing shared button; use `text`, `onClick`, `disabled`, and
+`buttonType="secondary"` for a themed action.
+
+`ControlSection` groups `children` under `title`, with optional `description`.
+Set `collapsible` and optional `defaultOpen` for a disclosure. `Legend` takes
+`label`, `items: {label, color, description?}[]`, optional `note`, and optional
+`details` content. Supply actual scene colors and application-owned meanings;
+every swatch has a visible label. Details are available in a disclosure rather
+than a permanent paragraph over the scene. These controls perform no processing
+or network requests.
+
 ## Application logs
 
 `LogStore`, `LogTerminal`, and `BottomLogPanel` expose Core's bounded, virtualized log UI without Core stores or routes. Import `@freemocap/ui/styles.css` once. Create one `LogStore({storageKey: 'your-app.logs'})`, call `start()`, feed the existing transport's `subscribeToLog(record => store.add(record))`, then unsubscribe and `dispose()` on teardown. Omit storageKey for memory-only history. The 10,000-record memory cap, 300-record persisted tail, idle persistence and 500ms UI polling keep per-record work outside React rendering. Relay `log_id` values deduplicate replayed history.

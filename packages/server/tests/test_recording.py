@@ -21,10 +21,24 @@ def fixture():
     media = PlaybackMedia(video_filename='left.mp4', nominal_fps=25,
                           timeline=clock.model_copy(update={'source': 'left'}))
     manifest = PlaybackManifest(recording_id='recording', revision='revision1', selected_run_id=0,
-                                runs=(PlaybackRun(run_id=0, channels=(channel,), timelines=(clock,), media=(media,)),))
+                                runs=(PlaybackRun(run_id=0, channels=(channel,), timelines=(clock,), media=(media,),
+                                    reference_frames={'world': {'name': 'world', 'basis': 'blender_x_right_y_forward_z_up', 'units': 'mm'}},
+                                    scene_reference_frames={'stereo': 'world'}),))
     sample = ChannelSamples(0, channel, np.array([101, 102]), np.array([1.0, 1.04]),
                             np.array([[[1., 2., 3.]], [[np.nan, np.nan, np.nan]]]))
     return manifest, sample
+
+
+def test_scene_references_reject_missing_mismatched_and_wrong_unit_definitions():
+    manifest, _ = fixture()
+    data = manifest.runs[0].model_dump()
+    for patch in ({'reference_frames': {}}, {'scene_reference_frames': {'stereo': 'other'}},
+                  {'reference_frames': {'world': {'name': 'world', 'basis': 'optical', 'units': 'm'}}}):
+        with pytest.raises(ValueError):
+            PlaybackRun.model_validate({**data, **patch})
+    data['channels'][0]['reference_frame'] = 'other'
+    with pytest.raises(ValueError, match='reference frame'):
+        PlaybackRun.model_validate(data)
 
 
 def test_writer_preserves_identity_missing_data_and_failed_publication(tmp_path):

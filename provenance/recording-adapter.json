@@ -3,7 +3,10 @@
   "source_revision": "3ae9842d896085e7d05603e279fa0a53502122c1",
   "sources": [
     "freemocap/api/http/playback/playback_router.py: stream_video, get_recording_parquet, get_recording_bundle",
-    "freemocap/api/http/recordings/resources_router.py"
+    "freemocap/api/http/recordings/resources_router.py",
+    "freemocap/core/recording/data_descriptors/recording_descriptor.py: RunDescriptor.reference_frames",
+    "freemocap/core/recording/sample_encoding/spatial_points.py: SpatialReference, SpatialBasis",
+    "freemocap/core/tasks/calibration/shared/camera_extrinsics.py: world_position, world_orientation"
   ],
   "sdk_contracts": [
     "packages/client/src/recording/playback-data.ts",

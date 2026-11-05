@@ -3,6 +3,29 @@
 @import 'react-grid-layout/css/styles.css';
 @import 'react-resizable/css/styles.css';
 
+.sdk-control-section {border:1px solid var(--color-border-secondary); border-radius:6px; background:var(--color-bg-secondary); color:var(--color-text-primary); min-width:0;}
+.sdk-control-summary {padding:10px; cursor:pointer; font-weight:600; font-size:12px; border-radius:6px;}
+.sdk-control-summary:hover {background:var(--color-surface-hover);}
+.sdk-control-summary:focus-visible,.sdk-legend-details summary:focus-visible {outline:2px solid var(--color-info); outline-offset:-2px;}
+.sdk-control-content {display:flex; flex-direction:column; gap:10px; padding:10px;}
+.sdk-control-description {margin:0; color:var(--color-text-muted); font-size:11px; line-height:1.5;}
+.sdk-number-field {display:grid; grid-template-columns:minmax(0,1fr) minmax(70px,100px); align-items:center; gap:5px 10px;}
+.sdk-number-field label {color:var(--color-text-primary);}
+.sdk-number-container.input-with-unit {width:100%; background:var(--color-surface-control); border-color:var(--color-border-control);}
+.sdk-number-container input {width:100%; min-width:0; background:transparent; color:var(--color-text-primary); border:0; outline:0;}
+.sdk-number-container:has(input:disabled) {opacity:.5;}
+.sdk-number-field small {grid-column:1/-1;}
+.sdk-legend {display:flex; align-items:center; flex-wrap:wrap; gap:8px 16px; padding:8px 12px; border:1px solid var(--color-border-secondary); border-radius:6px; background:var(--color-bg-secondary); color:var(--color-text-primary); font-size:12px;}
+.sdk-legend-title {font-weight:600;}
+.sdk-legend-items {display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; list-style:none; padding:0; margin:0;}
+.sdk-legend-items li {display:flex; align-items:center; gap:6px;}
+.sdk-legend-swatch {width:10px; height:10px; border-radius:3px; border:1px solid var(--color-border-control); flex-shrink:0;}
+.sdk-legend-note {color:var(--color-text-muted); font-size:11px;}
+.sdk-legend-details {margin-left:auto; color:var(--color-text-muted);}
+.sdk-legend-details summary {cursor:pointer;}
+.sdk-legend-details[open] {flex-basis:100%; margin-left:0;}
+.sdk-legend-details>div {padding-top:8px; line-height:1.5;}
+
 .sdk-bottom-log-panel {display:flex; flex-direction:column; min-height:0; flex-shrink:0; background:var(--color-bg-secondary); color:var(--color-text-primary); border-top:1px solid var(--color-surface-active);}
 .sdk-log-resize {height:5px; flex-shrink:0; cursor:ns-resize; touch-action:none; background:var(--color-surface-active);}
 .sdk-log-resize:focus-visible {outline:2px solid var(--color-text-primary);}

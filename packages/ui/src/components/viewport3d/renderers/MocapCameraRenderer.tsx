@@ -25,7 +25,7 @@ interface CameraPose {
     halfH: number;
 }
 
-function computePose(cam: CalibrationCameraData): CameraPose | null {
+export function computePose(cam: CalibrationCameraData): CameraPose | null {
     const wo = cam.world_orientation;
     const wp = cam.world_position;
     if (!wo || wo.length !== 3 || !wp || wp.length !== 3) return null;
@@ -100,6 +100,16 @@ function MocapCameraInstance({ cam }: { cam: CalibrationCameraData }) {
     );
 }
 
+export function CameraScene({cameras, referenceTransform}: {cameras: CalibrationCameraData[]; referenceTransform: Matrix4 | null}) {
+    return (
+        <group matrix={referenceTransform ?? new Matrix4()} matrixAutoUpdate={false}>
+            {cameras.map((cam) => (
+                <MocapCameraInstance key={cam.id} cam={cam} />
+            ))}
+        </group>
+    );
+}
+
 export function MocapCameraRenderer() {
     const referenceTransform = useReferenceTransform();
     const { loadedCalibration: loaded } = useWorkerData();
@@ -111,13 +121,5 @@ export function MocapCameraRenderer() {
 
     if (!loaded || loaded.cameras.length === 0) return null;
 
-    return (
-        <group matrix={referenceTransform ?? new Matrix4()} matrixAutoUpdate={false}>
-        <group rotation={[0, 0, Math.PI / 2]}>
-            {loaded.cameras.map((cam) => (
-                <MocapCameraInstance key={cam.id} cam={cam} />
-            ))}
-        </group>
-        </group>
-    );
+    return <CameraScene cameras={loaded.cameras} referenceTransform={referenceTransform}/>;
 }

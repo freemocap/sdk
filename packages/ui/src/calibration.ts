@@ -1,4 +1,5 @@
 import {z} from 'zod';
+import {SpatialReferenceSchema} from '@freemocap/client/recording';
 import {CalibrationSolverMethodSchema, CalibrationCreationAlignmentMethodSchema, LoadedCalibrationSchema, type CalibrationSolverMethod} from '@freemocap/client/recording';
 export * from '@freemocap/client/recording';
 
@@ -24,7 +25,9 @@ export interface CalibrationConfig {
     alignmentMethod: z.infer<typeof CalibrationCreationAlignmentMethodSchema> | null;
 }
 
-export const SceneCalibrationSchema = LoadedCalibrationSchema.pick({cameras: true});
+export const SceneCalibrationSchema = LoadedCalibrationSchema.pick({cameras: true}).extend({
+    referenceFrame: SpatialReferenceSchema.optional(),
+});
 export type SceneCalibration = z.infer<typeof SceneCalibrationSchema>;
 export const CalibrationSceneSchema = z.object({
     calibration: SceneCalibrationSchema.nullable(),
