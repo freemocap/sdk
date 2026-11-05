@@ -1,0 +1,204 @@
+// Shared bone styles and the existing pure matrix implementation.
+// Prepared renderer math is checked against this implementation.
+
+import type { PrimaryAxis } from '@freemocap/client';
+
+export type BoneSide = "left" | "right" | "center" | "left_hand" | "right_hand";
+
+export type BoneRegion = "body" | "hand" | "face" | "foot";
+
+/** Classify a segment by name into a coarse region for cross-section sizing. */
+export function classifyRegion(name: string): BoneRegion {
+    const lc = name.toLowerCase();
+    if (/eye|ear|nose|jaw|mouth/.test(lc)) return "face";
+    if (/hand|thumb|index|middle|ring|pinky|finger/.test(lc)) return "hand";
+    if (/foot|toe|metatarsal|tarsal|calcaneus|talus|navicular|cuboid|cuneiform|ankle/.test(lc)) return "foot";
+    return "body";
+}
+
+/** Transverse cross-section radius (mm) per region: face < hand < body. */
+export const REGION_CROSS_SECTION: Readonly<Record<BoneRegion, number>> = {
+    body: 9,
+    hand: 3.75,
+    face: 2.25,
+    foot: 3.75,
+};
+
+/** Fallback rest length (mm) for a segment whose size is not known at all — no fitted
+ *  length on the wire and no body height to scale its proportion by. */
+export const DEFAULT_SEGMENT_LENGTH = 1.0;
+
+/** Bone colors keyed by side. Left is cool, right is warm, and the hands are the
+ *  brighter pair of the same two families so a hand reads as "left" or "right" at a
+ *  glance while still being distinguishable from the arm it hangs off.
+ *
+ *  This is the ONE place skeleton coloring is decided — the bone meshes and the
+ *  segment-origin connection lines both read it, so they cannot drift apart. */
+/** The bone-side palette, authored once as hex. Everything that needs these colours
+ *  derives from HERE — a second hand-written copy is how the lines and the meshes drifted
+ *  apart the last time. */
+export const BONE_SIDE_HEX: Readonly<Record<BoneSide, string>> = {
+    left:       "#4488ff",  // blue
+    right:      "#ff4444",  // red
+    center:     "#c8b86a",  // muted sandy yellow
+    left_hand:  "#22dddd",  // cyan
+    right_hand: "#ff44dd",  // magenta
+};
+
+function normalizedRgbFromHex(hex: string): readonly [number, number, number] {
+    const value = Number.parseInt(hex.slice(1), 16);
+    return [((value >> 16) & 0xff) / 255, ((value >> 8) & 0xff) / 255, (value & 0xff) / 255];
+}
+
+export const BONE_SIDE_COLORS: Readonly<Record<BoneSide, readonly [number, number, number]>> =
+    Object.fromEntries(
+        Object.entries(BONE_SIDE_HEX).map(([side, hex]) => [side, normalizedRgbFromHex(hex)]),
+    ) as Readonly<Record<BoneSide, readonly [number, number, number]>>;
+
+/** Classify a segment name by its left_ / right_ prefix, and hands separately.
+ *
+ *  Sidedness comes from the prefix the YAML loader writes; "is this a hand" comes from
+ *  `classifyRegion`, so the two questions have one answer each rather than a second
+ *  hand-written list of finger names here. */
+export function classifyBone(name: string): BoneSide {
+    const isHand = classifyRegion(name) === "hand";
+    if (name.startsWith("left_")) return isHand ? "left_hand" : "left";
+    if (name.startsWith("right_")) return isHand ? "right_hand" : "right";
+    return "center";
+}
+
+/** wxyz → 3×3 rotation matrix (row-major, 9 floats). Matches skellyforge's
+ *  RotationQuaternion.to_rotation_matrix (Diebel 2006 eq. 125). */
+function rotationMatrixFromQuaternion(q: readonly [number, number, number, number]): number[] {
+    const [w, x, y, z] = q;
+    return [
+        1 - 2 * (y * y + z * z), 2 * (x * y - w * z),     2 * (x * z + w * y),
+        2 * (x * y + w * z),     1 - 2 * (x * x + z * z), 2 * (y * z - w * x),
+        2 * (x * z - w * y),     2 * (y * z + w * x),     1 - 2 * (x * x + y * y),
+    ];
+}
+
+/** 3×3 matrix multiply, both row-major (9 floats each). */
+function multiply3x3(a: readonly number[], b: readonly number[]): number[] {
+    const out = new Array<number>(9);
+    for (let row = 0; row < 3; row++) {
+        for (let col = 0; col < 3; col++) {
+            out[row * 3 + col] =
+                a[row * 3] * b[col] + a[row * 3 + 1] * b[3 + col] + a[row * 3 + 2] * b[6 + col];
+        }
+    }
+    return out;
+}
+
+function dot3(a: readonly number[], b: readonly number[]): number {
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+function cross3(a: readonly number[], b: readonly number[]): number[] {
+    return [
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    ];
+}
+
+function normalize3(v: readonly number[]): number[] {
+    const n = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+    return [v[0] / n, v[1] / n, v[2] / n];
+}
+
+/** Rodrigues rotation about a unit axis by an angle (row-major 3×3). */
+function rotationAboutAxis(axis: readonly number[], angle: number): number[] {
+    const [x, y, z] = axis;
+    const c = Math.cos(angle);
+    const s = Math.sin(angle);
+    const t = 1 - c;
+    return [
+        t * x * x + c,     t * x * y - s * z, t * x * z + s * y,
+        t * x * y + s * z, t * y * y + c,     t * y * z - s * x,
+        t * x * z - s * y, t * y * z + s * x, t * z * z + c,
+    ];
+}
+
+/** Rotation mapping a onto b (shortest arc), both unit vectors (row-major). */
+function rotationBetweenVectors(a: readonly number[], b: readonly number[]): number[] {
+    const dot = Math.min(1, Math.max(-1, dot3(a, b)));
+    if (dot > 1 - 1e-9) return [1, 0, 0, 0, 1, 0, 0, 0, 1]; // a ≈ b
+    if (dot < -1 + 1e-9) {
+        // a ≈ -b: 180° about any axis perpendicular to a.
+        const ref = Math.abs(a[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0];
+        const axis = normalize3(cross3(a, ref));
+        return rotationAboutAxis(axis, Math.PI);
+    }
+    const axis = normalize3(cross3(a, b));
+    return rotationAboutAxis(axis, Math.acos(dot));
+}
+
+/** The primary axis as a unit direction vector. */
+function primaryAxisDirection(axis: PrimaryAxis): number[] {
+    if (typeof axis === "string") {
+        switch (axis) {
+            case "x":  return [1, 0, 0];
+            case "-x": return [-1, 0, 0];
+            case "y":  return [0, 1, 0];
+            case "-y": return [0, -1, 0];
+            case "z":  return [0, 0, 1];
+            case "-z": return [0, 0, -1];
+        }
+    }
+    return normalize3([axis[0], axis[1], axis[2]]);
+}
+
+/** The rotation mapping the unit geometry's +Z onto the segment's primary-axis
+ *  direction (row-major 3×3). Signed axes and 3-vectors both flow through the
+ *  same shortest-arc rotation. */
+function rotationOntoPrimaryAxis(axis: PrimaryAxis): number[] {
+    return rotationBetweenVectors([0, 0, 1], primaryAxisDirection(axis));
+}
+
+/**
+ * Per-frame instance transform (pure — the only per-frame math, unit-tested).
+ *
+ * Composition: world = R_world · Q · S, where
+ *   Q        rotationOntoPrimaryAxis(primaryAxis) — geometry +Z onto the bone's
+ *            primary-axis direction (origin→distal),
+ *   R_world  rotationMatrixFromQuaternion(quatWXYZ) — the segment's absolute
+ *            world orientation (local → world), already inclusive of the rest pose.
+ *
+ * @param origin          proximal joint (segment origin), mm
+ * @param quatWXYZ        world-frame quaternion [w, x, y, z] (ROTATIONS_WORLD)
+ * @param _restOrientation unused (kept for the existing call signature)
+ * @param primaryAxis     the segment's primary axis (signed axis or 3-vector)
+ * @param length          segment length; NaN/0 hides the instance
+ * @param crossSection    transverse radius (mm) — same for 1 mm and 500 mm bones
+ * @returns a 16-float column-major matrix, or null when the segment is hidden
+ */
+export function computeBoneMatrix(
+    origin: readonly [number, number, number],
+    quatWXYZ: readonly [number, number, number, number],
+    _restOrientation: readonly [number, number, number, number],
+    primaryAxis: PrimaryAxis,
+    length: number,
+    crossSection: number,
+): number[] | null {
+    if (!Number.isFinite(length) || length <= 0) return null;
+    for (let i = 0; i < 3; i++) if (!Number.isFinite(origin[i])) return null;
+    for (let i = 0; i < 4; i++) if (!Number.isFinite(quatWXYZ[i])) return null;
+
+    const R = rotationMatrixFromQuaternion(quatWXYZ);
+    const Q = rotationOntoPrimaryAxis(primaryAxis);
+    const Rtotal = multiply3x3(R, Q);
+
+    // Column-major storage: m[col*4 + row] = (Rtotal · S)[row][col], S diagonal.
+    const m = new Array<number>(16);
+    for (let col = 0; col < 3; col++) {
+        const s = col === 0 ? crossSection : col === 1 ? crossSection : length;
+        m[col * 4 + 0] = Rtotal[col] * s;
+        m[col * 4 + 1] = Rtotal[3 + col] * s;
+        m[col * 4 + 2] = Rtotal[6 + col] * s;
+        m[col * 4 + 3] = 0;
+    }
+    m[12] = origin[0]; m[13] = origin[1]; m[14] = origin[2]; m[15] = 1;
+
+    return m;
+}

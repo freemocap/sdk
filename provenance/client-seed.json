@@ -1,0 +1,307 @@
+{
+  "files": [
+    {
+      "target": "packages/client/.gitignore",
+      "source": "packages/freemocap-client/.gitignore",
+      "sha256": "07a04ec6f9dda8eb0f414961e22eb4666f08f108b291e16c380d68b9c8666319"
+    },
+    {
+      "target": "packages/client/LICENSE",
+      "source": "packages/freemocap-client/LICENSE",
+      "sha256": "6f1e622c82a380075843bb084a7ec3b1f1d12a4a02526d75e78b0924a860aa75"
+    },
+    {
+      "target": "packages/client/README.md",
+      "source": "packages/freemocap-client/README.md",
+      "sha256": "62c1c2dfd0966dacb97391a3280b46c07a497426c9f4bbdd0556028529d98f87"
+    },
+    {
+      "target": "packages/client/compatibility/0.1.0-dev.0.json",
+      "source": "packages/freemocap-client/compatibility/0.1.0-dev.0.json",
+      "sha256": "eefc9d248e1ba9868b61a0d453783d5eddcc532a864d8a967ae7abc81c4d19b1"
+    },
+    {
+      "target": "packages/client/compatibility/README.md",
+      "source": "packages/freemocap-client/compatibility/README.md",
+      "sha256": "bbbda68742e33901a17f19997d2c10e4ca15af95a0dd5c83b6f46efed413db77"
+    },
+    {
+      "target": "packages/client/contracts/README.md",
+      "source": "packages/freemocap-client/contracts/README.md",
+      "sha256": "ec076c9db5542d30559bc98dc7a8ccf39ec15a5cedcde07f50b56ee89e072409"
+    },
+    {
+      "target": "packages/client/contracts/coverage.md",
+      "source": "packages/freemocap-client/contracts/coverage.md",
+      "sha256": "95f34a7de585fd7f9400e1a7f56485351756edd085d0760999db637afc8e8497"
+    },
+    {
+      "target": "packages/client/contracts/http-conformance.mjs",
+      "source": "packages/freemocap-client/contracts/http-conformance.mjs",
+      "sha256": "e8460a9245c829a0b6be91a03289e587c57db6697d71b155023459a43eeeb4ae"
+    },
+    {
+      "target": "packages/client/contracts/openapi.json",
+      "source": "packages/freemocap-client/contracts/openapi.json",
+      "sha256": "734badf15cc821cc2ff9f26aadefcbb5cd02a286b540cf3f3397acbc0c236e46"
+    },
+    {
+      "target": "packages/client/contracts/operations.json",
+      "source": "packages/freemocap-client/contracts/operations.json",
+      "sha256": "fa31e845da960bb6d7ec9d0080df0f1a5ef4a2e2206d22ddfb09fd212cfc81db"
+    },
+    {
+      "target": "packages/client/examples/export.mjs",
+      "source": "packages/freemocap-client/examples/export.mjs",
+      "sha256": "e31408d6a06334696787f7cac0024b2cadce84d5f81260ccb218ec40aac16c3a"
+    },
+    {
+      "target": "packages/client/examples/inspect-server.mjs",
+      "source": "packages/freemocap-client/examples/inspect-server.mjs",
+      "sha256": "adc0852933b602ca211cb38fdf4fa408166f8adf6db3207563d55e479b5ed845"
+    },
+    {
+      "target": "packages/client/examples/recording.mjs",
+      "source": "packages/freemocap-client/examples/recording.mjs",
+      "sha256": "c6ec29ff1e894ebbab093b18056c567e083d83144bff509120db84d9f44d4945"
+    },
+    {
+      "target": "packages/client/examples/stream.mjs",
+      "source": "packages/freemocap-client/examples/stream.mjs",
+      "sha256": "de55f451e572355fda4d4ed50844d66ad8561c3031362f3a096b11fc71b4ccc4"
+    },
+    {
+      "target": "packages/client/package-lock.json",
+      "source": "packages/freemocap-client/package-lock.json",
+      "sha256": "18a399a522bf3fd661aa5e3e164541b2106032f02cd5f11cfe6684edaf56c3f9"
+    },
+    {
+      "target": "packages/client/package.json",
+      "source": "packages/freemocap-client/package.json",
+      "sha256": "92198797e03dfa7b0370c1b7e332e3e647a1067f240d446faed3c5089931532d"
+    },
+    {
+      "target": "packages/client/src/generated/operations.ts",
+      "source": "packages/freemocap-client/src/generated/operations.ts",
+      "sha256": "335deb1436cd4cd3eebad5d3f10995a7fe5b5b16cb63f503d1c3a3e0b4b69223"
+    },
+    {
+      "target": "packages/client/src/generated/schema.ts",
+      "source": "packages/freemocap-client/src/generated/schema.ts",
+      "sha256": "14b9fe94c89345c2199edcc8f269742924d3e3d2e6280d990f31995edb98b87c"
+    },
+    {
+      "target": "packages/client/src/http.ts",
+      "source": "packages/freemocap-client/src/http.ts",
+      "sha256": "c8c7f4a3da1db39929516cd50612d5e2b23d4d221d4c4c3eab42d1fc521d2416"
+    },
+    {
+      "target": "packages/client/src/images/image-payload.ts",
+      "source": "packages/freemocap-client/src/images/image-payload.ts",
+      "sha256": "157fcb4fc00dee37e81bedfef7ce4e66829a98b4f6fbfdb49d55b500ca5c3608"
+    },
+    {
+      "target": "packages/client/src/images/index.ts",
+      "source": "packages/freemocap-client/src/images/index.ts",
+      "sha256": "b5342931d8ac0fc002b0d1aa5e49cc9ca1d6a455b7c8a600d05ee3b4e02f1cdf"
+    },
+    {
+      "target": "packages/client/src/images/jpeg.ts",
+      "source": "packages/freemocap-client/src/images/jpeg.ts",
+      "sha256": "6b49f8be3949e02991421d5b75b880f42f8ca96e60d30cf0e611b9be96d0af13"
+    },
+    {
+      "target": "packages/client/src/index.ts",
+      "source": "packages/freemocap-client/src/index.ts",
+      "sha256": "5672068803f74802928dc9f2e55a7b82edf151092169f4b26b3b7c8ba0aaf426"
+    },
+    {
+      "target": "packages/client/src/recording/calibration.ts",
+      "source": "packages/freemocap-client/src/recording/calibration.ts",
+      "sha256": "03aea5de0d251513718eb2116e7ed70d369864f3bf6dffd7bb2806cdaff0d4f5"
+    },
+    {
+      "target": "packages/client/src/recording/index.ts",
+      "source": "packages/freemocap-client/src/recording/index.ts",
+      "sha256": "7bf6619fb61637bf6acd6c4add6a2d0c0245b23eec8599defe58a9f58cec2530"
+    },
+    {
+      "target": "packages/client/src/recording/playback-data.ts",
+      "source": "packages/freemocap-client/src/recording/playback-data.ts",
+      "sha256": "7dcf995f867f11c28998a42ba9cef9114d420578cb18a096b56c7c1ad6dff160"
+    },
+    {
+      "target": "packages/client/src/recording/playback-parquet.ts",
+      "source": "packages/freemocap-client/src/recording/playback-parquet.ts",
+      "sha256": "8cab857950ecfb107d095bc904382fc82e34105835d3615589826318c8fefce0"
+    },
+    {
+      "target": "packages/client/src/recording/playback-source.ts",
+      "source": "packages/freemocap-client/src/recording/playback-source.ts",
+      "sha256": "e48f63accddead9a215a56bd89fd3e9e59acbcf85cfe0f901c053208f4e0d2c8"
+    },
+    {
+      "target": "packages/client/src/transport/TransportService.ts",
+      "source": "packages/freemocap-client/src/transport/TransportService.ts",
+      "sha256": "e9c40496e2046f84a4f566401a5bb4f166a5e3825fe153a7cbfe9d0d14dc0bb2"
+    },
+    {
+      "target": "packages/client/src/transport/application-kinds.ts",
+      "source": "packages/freemocap-client/src/transport/application-kinds.ts",
+      "sha256": "bef0c82f1d7c54eed64cabf24d0c8ac160091343b94311e38da310a6a008181e"
+    },
+    {
+      "target": "packages/client/src/transport/cbor-codec.ts",
+      "source": "packages/freemocap-client/src/transport/cbor-codec.ts",
+      "sha256": "d8920f7e9e06dc9de218b19e3563495706c8d05a275dca717096a5032bcd844d"
+    },
+    {
+      "target": "packages/client/src/transport/content-equality.ts",
+      "source": "packages/freemocap-client/src/transport/content-equality.ts",
+      "sha256": "7f333c110d2927a4c2faa5ae3e8603293bb9f6859e80b5a391455e2c7764914f"
+    },
+    {
+      "target": "packages/client/src/transport/frame-resolution.ts",
+      "source": "packages/freemocap-client/src/transport/frame-resolution.ts",
+      "sha256": "49aa7998f1e0cc61df410fe9b4f22362d9af0873d128305ba769b9879b4e3461"
+    },
+    {
+      "target": "packages/client/src/transport/frame-types.ts",
+      "source": "packages/freemocap-client/src/transport/frame-types.ts",
+      "sha256": "8396bd1b0534ea575dc06ab5b5ebd8858f7d8eccf3949fc603162aa749717f76"
+    },
+    {
+      "target": "packages/client/src/transport/log-record.ts",
+      "source": "packages/freemocap-client/src/transport/log-record.ts",
+      "sha256": "b0d755a02eb99d37d2728eb5869c69b4c39f56e3ac21bc1ac4304c7cd961a6c8"
+    },
+    {
+      "target": "packages/client/src/transport/message-contract.ts",
+      "source": "packages/freemocap-client/src/transport/message-contract.ts",
+      "sha256": "81b268417b7c6381da2118891441969ff09b7cd5ffd38e822e5f1e21910de1b4"
+    },
+    {
+      "target": "packages/client/src/transport/snapshot-equality.ts",
+      "source": "packages/freemocap-client/src/transport/snapshot-equality.ts",
+      "sha256": "6beecf2c26cc80e8a8d69fe2a15b3f802cf0e4e2c0098c333753b59faf370281"
+    },
+    {
+      "target": "packages/client/src/transport/websocket-connection.ts",
+      "source": "packages/freemocap-client/src/transport/websocket-connection.ts",
+      "sha256": "05a015b0fdcb298020ca594694355ba1f0b64fe9bbd2e406b5636849977729e2"
+    },
+    {
+      "target": "packages/client/tests/application-kinds.test.mjs",
+      "source": "packages/freemocap-client/tests/application-kinds.test.mjs",
+      "sha256": "e09933570915c070d22e18938384093ec1fe3a0e271a79973b599159195d038b"
+    },
+    {
+      "target": "packages/client/tests/fixtures/generic-recording.json",
+      "source": "packages/freemocap-client/tests/fixtures/generic-recording.json",
+      "sha256": "a8d28008c36b629d301bdb171a903543d5b5ad9129e0643c8f09b2430eea8c4f"
+    },
+    {
+      "target": "packages/client/tests/fixtures/image-payload.json",
+      "source": "packages/freemocap-client/tests/fixtures/image-payload.json",
+      "sha256": "0f74155c7394fd9cd0b13022bc290031ec094d4e1eff95ba996407d0f1156d4e"
+    },
+    {
+      "target": "packages/client/tests/http.test.mjs",
+      "source": "packages/freemocap-client/tests/http.test.mjs",
+      "sha256": "ab428c791ae6dbca7ab3a76501bdbc4c4be9a4065207dafbc2f7302b0c558b37"
+    },
+    {
+      "target": "packages/client/tests/image-payload.test.mjs",
+      "source": "packages/freemocap-client/tests/image-payload.test.mjs",
+      "sha256": "eed0ac7446a9c0d1573e8c7a9bd1ffbea1def4723d9f49aeed714bb1b6a06fa1"
+    },
+    {
+      "target": "packages/client/tests/live-acceptance.mjs",
+      "source": "packages/freemocap-client/tests/live-acceptance.mjs",
+      "sha256": "24185813afdbca42e1ce8d42042af3c06597a9425ed3338c61f61439c0947e39"
+    },
+    {
+      "target": "packages/client/tests/output-controls.test.mjs",
+      "source": "packages/freemocap-client/tests/output-controls.test.mjs",
+      "sha256": "94bb1e07e78d2ca710be4daf7944484969c5afa0a6d56bad481db89f0fb9d367"
+    },
+    {
+      "target": "packages/client/tests/playback.test.ts",
+      "source": "packages/freemocap-client/tests/playback.test.ts",
+      "sha256": "021a979401931c1e9da4dd913e29215d713087078539713afd3b44a79ea67f2a"
+    },
+    {
+      "target": "packages/client/tests/recording-startup.test.mjs",
+      "source": "packages/freemocap-client/tests/recording-startup.test.mjs",
+      "sha256": "095786faba74a8dc0f30375f0cdfe513e7d45491fca2149c5c85d373f5ebaff7"
+    },
+    {
+      "target": "packages/client/tests/recording.test.mjs",
+      "source": "packages/freemocap-client/tests/recording.test.mjs",
+      "sha256": "389b32e427ae3c4998f162c5b333786cf65a567167f03745ea107958a77fecd0"
+    },
+    {
+      "target": "packages/client/tests/replay-acceptance.mjs",
+      "source": "packages/freemocap-client/tests/replay-acceptance.mjs",
+      "sha256": "4fdb2850cfcecc1a1ce9355cec6af36d445f7b11f7909c792587225970761d9a"
+    },
+    {
+      "target": "packages/client/tests/server-acceptance.mjs",
+      "source": "packages/freemocap-client/tests/server-acceptance.mjs",
+      "sha256": "cb70aeaa349f2225730cb849896cd66387828c5e1f0051a9076ed95fd21cf416"
+    },
+    {
+      "target": "packages/client/tests/socket.test.mjs",
+      "source": "packages/freemocap-client/tests/socket.test.mjs",
+      "sha256": "ead84878fbafb0573e04782cf998edcff054cadfdb614f0a199e3290915e274a"
+    },
+    {
+      "target": "packages/client/tests/transport.test.ts",
+      "source": "packages/freemocap-client/tests/transport.test.ts",
+      "sha256": "5de44753c32bfa1d32ea4cb911f5e80ee7ea2f3d6d65f37cca13daf438b0ec28"
+    },
+    {
+      "target": "packages/client/tests/types.ts",
+      "source": "packages/freemocap-client/tests/types.ts",
+      "sha256": "97ca6a0adee2a6dfce0c1741e0e564af6336c14a01f12587c91803e0659abe9c"
+    },
+    {
+      "target": "packages/client/tools/check-examples.mjs",
+      "source": "packages/freemocap-client/tools/check-examples.mjs",
+      "sha256": "e3cf8ea94ca913e9de7187666c1992963e90c871e7455acedf1e22801c226cd5"
+    },
+    {
+      "target": "packages/client/tools/compile-tests.mjs",
+      "source": "packages/freemocap-client/tools/compile-tests.mjs",
+      "sha256": "7e8936e26c8ae9d84d480c3adef8e198cf10f50dea68c6e730fe52b277371b35"
+    },
+    {
+      "target": "packages/client/tools/coverage.mjs",
+      "source": "packages/freemocap-client/tools/coverage.mjs",
+      "sha256": "9e3d5e4c74f6fb80070f24e91d31b5cf1ae2d5f6d89f36c0ddb842197a573d7c"
+    },
+    {
+      "target": "packages/client/tools/generate-operations.mjs",
+      "source": "packages/freemocap-client/tools/generate-operations.mjs",
+      "sha256": "9c18c3c8c1ce1a567d6cc9906079e6bdb6474f5a16fb39ba5fe7e2a91a30f6c8"
+    },
+    {
+      "target": "packages/client/tools/generate-recording-fixture.py",
+      "source": "packages/freemocap-client/tools/generate-recording-fixture.py",
+      "sha256": "aa398bf141aabc3c364347b7777900f59a2a5856a02a9faaa6cfdb1e2c4b081d"
+    },
+    {
+      "target": "packages/client/tsconfig.json",
+      "source": "packages/freemocap-client/tsconfig.json",
+      "sha256": "f7a7df1a2ca462dc381bee623b9b3dae534ad3904c86875c70450872b8ac1491"
+    },
+    {
+      "target": "packages/client/tsconfig.tests.json",
+      "source": "packages/freemocap-client/tsconfig.tests.json",
+      "sha256": "5e0d40d0c647dbabf0aa8b6d3833dd79108174814121555e96be60d2ac0ec8f3"
+    }
+  ],
+  "source_revision": "3ae9842d896085e7d05603e279fa0a53502122c1",
+  "source_package_dirty": false,
+  "source_repository": "https://github.com/freemocap/freemocap"
+}

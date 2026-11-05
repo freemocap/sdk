@@ -1,0 +1,2 @@
+# The generated coverage check compares the committed document byte-for-byte.
+packages/client/contracts/coverage.md text eol=lf

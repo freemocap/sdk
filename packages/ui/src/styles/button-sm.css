@@ -1,0 +1,230 @@
+/* BUTTON STYLES AND SHAPES */
+/* Activate button */
+.activated>p {
+  color: var(--color-success);
+}
+
+.isOn>p {
+  color: var(--color-text-primary);
+}
+
+.selected>p {
+  color: var(--color-text-primary);
+}
+
+.button.activated {
+  background-color: var(--color-bg-elevated);
+}
+
+.button.activated:hover {
+  background-color: var(--color-bg-tertiary);
+}
+
+.button.full-width-text-center {
+  justify-content: center;
+}
+
+/* Secondary: any other working action in a row or panel */
+.secondary {
+  background-color: var(--color-surface-control);
+  border: 1px solid var(--color-border-control);
+  color: var(--color-text-primary);
+}
+
+.secondary>p {
+  color: var(--color-text-primary);
+}
+
+.secondary:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.tertiary>p {
+  color: var(--color-text-primary);
+}
+
+/* Primary fullwidth button */
+button.quaternary,
+.quaternary {
+  background-color: transparent;
+  transition: background-color 0.3s ease;
+}
+
+.app-root.quaternary:hover,
+button.quaternary:hover,
+.quaternary:hover {
+  background-color: var(--color-bg-elevated);
+  transition: background-color 0.15s ease;
+}
+
+.button.quaternary.activated {
+  background-color: var(--color-bg-primary);
+}
+
+.button.quaternary>p {
+  color: var(--color-text-primary);
+}
+
+.full-width {
+  min-width: 100%;
+}
+
+/* Primary fullwidth button */
+.primary {
+  background-color: var(--color-text-primary);
+}
+
+.primary:hover {
+  background-color: var(--log-trace);
+}
+
+.primary>p {
+  color: var(--color-text-primary);
+}
+
+
+/* Outlined action: drawn as a secondary button */
+.button.accent-outline {
+  background-color: var(--color-surface-control);
+  border: 1px solid var(--color-border-control);
+}
+
+.button.accent-outline:hover {
+  background-color: var(--color-surface-hover);
+}
+
+.button.accent-outline:focus-visible {
+  outline: 2px solid var(--color-info-strong);
+  outline-offset: 2px;
+}
+
+/* Primary action: teal fill with a dark label and icon; the child combinator keeps the tooltip inside the button light */
+.accent {
+  background-color: var(--color-primary-fill);
+}
+
+.accent > p {
+  color: var(--color-on-primary);
+}
+
+.accent > .icon {
+  background-color: var(--color-on-primary);
+}
+
+.btn-danger {
+  background-color: var(--color-danger-idle);
+  border: 1px solid var(--color-danger);
+}
+
+.btn-danger:hover {
+  background-color: var(--color-danger-muted);
+}
+
+.btn-danger>p {
+  color: var(--color-text-primary);
+}
+
+.accent:hover {
+  background-color: var(--color-primary-fill-hover);
+}
+
+/* card button */
+.button.card {
+  width: 100px;
+  height: 116px;
+  transition: background-color var(--speed-1) ease-in-out;
+}
+
+.button.sm:after {
+  /* right side icon setup*/
+  width: 16px;
+  height: 16px;
+}
+
+.button.sm.externallink:after {
+  content: "";
+  background-image: var(--externallink-icon);
+  transform-origin: center center;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+}
+
+.button.sm.dropdown:after {
+  content: "";
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-left: auto;
+  background-image: var(--dropdown-icon);
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: contain;
+  /* or 16px 16px */
+  display: block;
+}
+
+.button.sm.select-folder:after {
+  content: var(--importproject_icon);
+  margin-left: auto;
+}
+
+.button.sm,
+button.rotate-button {
+  padding: 4px 6px;
+  min-height: 25px;
+  width: auto;
+  /* to fit its content */
+  /* max-width: max-content; */
+  /* to fit its content */
+  position: relative;
+  transition: background-color var(--speed-1) ease-in-out, transform var(--speed-1) ease-in-out;
+}
+.button.sm.selected,
+.selected-camera-settings {
+  background-color: var(--color-bg-primary);
+
+}
+.fit-content {
+  max-width: max-content;
+  /* min-width: max-content; */
+}
+
+.min-w-fit-content {
+  /* max-width: max-content; */
+  min-width: max-content;
+}
+
+.button.sm:not(.primary, .secondary, .activated):hover {
+  background-color: var(--color-bg-elevated);
+  transition: background-color var(--speed-1) ease-in-out;
+
+}
+
+.button.rotate-button:not(.primary, .secondary, .activated):hover,
+.toggle-button:hover>.button.rotate-button:not(.primary, .secondary, .activated) {
+  transform: rotate(45deg);
+  transition: transform var(--speed-2) ease-in-out;
+}
+
+.button:not(p,
+  .button.checkbox,
+  button.text-sm,
+  input,
+  button.active,
+  .toggle-button, .rotate-button):active {
+  transform: scale(99%);
+  transform: translateY(1px);
+
+}
+
+
+.button.rotate-button:not(.primary, .secondary, .activated):hover:active,
+.toggle-button:hover:active>.button.rotate-button:not(.primary, .secondary, .activated) {
+  transform: rotate(90deg);
+  transition: transform var(--speed-0) ease-in-out;
+}
+
+.icon-button.activate {
+  background-color: var(--color-info-medium);
+}

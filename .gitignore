@@ -218,3 +218,11 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# JavaScript packages and local validation artifacts
+node_modules/
+.test-artifacts/
+*.tgz
+
+# Rust package build outputs
+target/

@@ -1,0 +1,22 @@
+[
+  {
+    "source": "repos/freemocap/freemocap/api/websocket/send_serializer.py",
+    "sha256": "a121ed0915410d058816b59a4303f1f28d78b8e9e486349a27bf126b50c3cd5a"
+  },
+  {
+    "source": "repos/freemocap-ultraskelly/packages/freemocap-stream/src/freemocap_stream/messages.py",
+    "sha256": "7776d46a8eab9753d2d08472184f034b127936288e85de04d473dba0074ef5e9"
+  },
+  {
+    "source": "repos/freemocap-ultraskelly/packages/freemocap-stream/src/freemocap_stream/image_payload.py",
+    "sha256": "3f0471acded7ffca805aed9aba6d54cc16cbff419d1b199e4c1a018c2f0060f4"
+  },
+  {
+    "source": "repos/freemocap-ultraskelly/packages/freemocap-stream/src/freemocap_stream/frames.py",
+    "sha256": "e013cbd7813b81bb7c6cf9ec9ab3e9dd0368b6ff5f92ff193a4012659c9aabe8"
+  },
+  {
+    "source": "repos/freemocap-ultraskelly/packages/freemocap-stream/src/freemocap_stream/delivery.py",
+    "sha256": "298c890e634c15c225cd022e1dfdbe4c4b67a64999e708d95ab754daeea4045e"
+  }
+]

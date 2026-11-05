@@ -1,0 +1,113 @@
+import {Color} from "three";
+
+/** 3D point with x, y, z coordinates */
+export interface Point3d {
+    x: number;
+    y: number;
+    z: number;
+}
+
+export interface PointStyle {
+    color: Color;
+    scale: number;
+}
+
+/** Viewport layer visibility toggles. One key per toggle in the viewport panel. */
+export interface ViewportVisibility {
+    /** Solid rigid-body segments of the tracked model, colored by body side. */
+    bones: boolean;
+    /** Authored Skelly artwork for the compatible standard-human model. */
+    skellyMesh: boolean;
+    /** Thin lines joining parent → child segment origins. */
+    boneLines: boolean;
+    /** Anatomical points on the tracked model. */
+    landmarks: boolean;
+    /** Per-segment x/y/z orientation triads. */
+    segmentAxes: boolean;
+    /** Detected face keypoints. */
+    face: boolean;
+    /** Tracker-declared connections between detected face keypoints. */
+    faceConnections: boolean;
+    /** Triangulated 3D detector output, before model fitting. */
+    rawKeypoints: boolean;
+    /** Detector keypoints placed under the model's landmark names. */
+    mappedKeypoints: boolean;
+    /** Master switch for every center-of-mass element below. */
+    centerOfMass: boolean;
+    comMarker: boolean;
+    comFloorPoint: boolean;
+    comDropLine: boolean;
+    xcom: boolean;
+    xcomLine: boolean;
+    /** Floor grid and origin axes. */
+    floorGrid: boolean;
+    /** Calibrated camera bodies and frustums. */
+    cameras: boolean;
+}
+
+export type LayerKey = keyof ViewportVisibility;
+
+export const DEFAULT_VISIBILITY: ViewportVisibility = {
+    bones: true,
+    skellyMesh: false,
+    boneLines: true,
+    landmarks: false,
+    segmentAxes: true,
+    face: true,
+    faceConnections: false,
+    rawKeypoints: false,
+    mappedKeypoints: false,
+    centerOfMass: true,
+    comMarker: true,
+    comFloorPoint: true,
+    comDropLine: true,
+    xcom: true,
+    xcomLine: true,
+    floorGrid: true,
+    cameras: true,
+};
+
+/** Live per-layer item counts, written by the renderers, shown in the viewport panel. */
+export interface ViewportStats {
+    rawKeypoints: number;
+    landmarks: number;
+    mappedKeypoints: number;
+    face: number;
+    faceConnections: number;
+    boneLines: number;
+    cameras: number;
+    centerOfMass: number;
+}
+
+export type CountedLayerKey = keyof ViewportStats;
+
+export const EMPTY_STATS: ViewportStats = {
+    rawKeypoints: 0,
+    landmarks: 0,
+    mappedKeypoints: 0,
+    face: 0,
+    faceConnections: 0,
+    boneLines: 0,
+    cameras: 0,
+    centerOfMass: 0,
+};
+
+// ---------------------------------------------------------------------------
+// Inspection (hover / click-to-pin a named point or bone).
+// ---------------------------------------------------------------------------
+
+/** Inspectable entity kinds in the 3D viewport. */
+export type InspectionKind = "keypoint" | "mapped keypoint" | "landmark" | "segment";
+
+/** A hovered or pinned inspectable entity. */
+export type InspectionTarget =
+    | {kind: "keypoint"; name: string}
+    | {kind: Exclude<InspectionKind, "keypoint">; name: string; modelId: string; instanceId: number};
+
+/** Compare semantic identity, independent of the current renderer slot. */
+export function sameInspectionTarget(left: InspectionTarget | null, right: InspectionTarget | null): boolean {
+    if (left === right) return true;
+    if (!left || !right || left.kind !== right.kind || left.name !== right.name) return false;
+    if (left.kind === "keypoint" || right.kind === "keypoint") return left.kind === right.kind;
+    return left.modelId === right.modelId && left.instanceId === right.instanceId;
+}

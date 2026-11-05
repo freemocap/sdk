@@ -1,0 +1,298 @@
+import assert from 'node:assert/strict';
+import {test} from 'node:test';
+import {ViewportFrameReceiver, ViewportFrameSender} from './viewport-frame-transfer';
+import {prepareFrameLayout, readFrameBuffer, referencedFrameBuffers, writeFrameBuffer} from './viewport-frame-codec';
+import {workerDataStore} from './WorkerDataStore';
+import type {ResolvedModelFrame} from '@freemocap/client';
+
+const modelFrame = (instanceId: number, value: number): ResolvedModelFrame => ({
+    modelId: 'subject', instanceId, fittedScaleMm: 123.123456789,
+    mappedKeypoints: {names: ['point'], data: new Float32Array([value, value, value])},
+    landmarks: null, segmentOrigins: null, segmentLengths: {names: ['bone'], data: new Float32Array([42]), fittedScaleMm: 98.7654321},
+    rotations: {boneNames: ['bone'], worldQuaternions: new Float32Array([1, 0, 0, 0]), localQuaternions: new Float32Array()},
+    derived: {centerOfMass: [1.123456789, 2, 3], xcom: null},
+});
+
+function harness() {
+    const toWorker: any[] = [], toMain: any[] = [], sent: any[] = [];
+    workerDataStore.dispatch('livePresentation', false);
+    const sender = new ViewportFrameSender((message, transfer = []) => {
+        const cloned = structuredClone(message, {transfer}) as any; toWorker.push(cloned);
+        if (cloned.type === 'viewportFrame') sent.push(cloned);
+    });
+    const receiver = new ViewportFrameReceiver(
+        (message, transfer = []) => toMain.push(structuredClone(message, {transfer})),
+        (stream, frame) => workerDataStore.dispatch(stream, frame),
+        () => referencedFrameBuffers(workerDataStore.getLatestKeypoints(), workerDataStore.getLatestModelFrames()),
+        () => workerDataStore.dispatch('frameReset', null),
+    );
+    const unsubscribePoints = workerDataStore.subscribeToKeypoints(() => receiver.scheduleRelease());
+    const unsubscribeModels = workerDataStore.subscribeToModelFrames(() => receiver.scheduleRelease());
+    const worker = async () => {while (toWorker.length) receiver.receive(toWorker.shift()); await Promise.resolve();};
+    const main = () => {while (toMain.length) sender.receive(toMain.shift());};
+    const drain = async () => {
+        let attempts = 0;
+        do {await worker(); main(); assert.ok(++attempts < 50, 'transport must settle');} while (toWorker.length || toMain.length);
+    };
+    const close = async () => {sender.dispose(); await drain(); unsubscribePoints(); unsubscribeModels(); workerDataStore.dispatch('livePresentation', false);};
+    return {sender, receiver, toWorker, toMain, sent, worker, main, drain, close};
+}
+
+test('frame transfer copies only view bytes, preserves source ownership and reuses layout metadata', async () => {
+    const h = harness();
+    try {
+        const recording = new Float32Array(100_000).fill(99);
+        recording.set([1, 2, 3, 4, 5, 6], 30);
+        const names = ['left', 'right'];
+        const frame = {pointNames: names, interleaved: recording.subarray(30, 36)};
+        h.sender.sendKeypoints(frame);
+        assert.equal(h.sent[0].buffer.byteLength, 24);
+        assert.equal(recording.byteLength, 400_000);
+        await h.drain();
+        const first = workerDataStore.getLatestKeypoints()!;
+        assert.deepEqual(Array.from(first.interleaved), [1, 2, 3, 4, 5, 6]);
+        h.sender.sendKeypoints({pointNames: names, interleaved: new Float32Array([7, 8, 9, 10, 11, 12])});
+        assert.equal(h.sent[1].layout, undefined);
+        await h.drain();
+        assert.equal(first.interleaved.buffer.byteLength, 0, 'released worker presentation can now be recycled');
+        assert.equal(recording.byteLength, 400_000, 'recording buffer never transfers');
+        assert.deepEqual(Array.from(recording.subarray(30, 36)), [1, 2, 3, 4, 5, 6]);
+        h.sender.sendKeypoints({pointNames: ['right', 'left'], interleaved: frame.interleaved});
+        assert.ok(h.sent[2].layout);
+        await h.drain();
+        assert.deepEqual(workerDataStore.getLatestKeypoints()!.pointNames, ['right', 'left']);
+    } finally {await h.close();}
+});
+
+test('multiple borrowed tracker channels pack directly into pooled transfer with backpressure and layout changes', async () => {
+    const h = harness();
+    try {
+        const firstValues = new Float32Array([1, 2, 3]), secondValues = new Float32Array([90, 6, 4, 5]);
+        const frame = {pointNames: ['wrist', 'corner'], pointSources: [
+            {names: ['wrist'], data: firstValues},
+            {names: ['corner'], data: secondValues, stride: 4, coordinateOffsets: [2, 3, 1] as const},
+        ]};
+        h.sender.sendKeypoints(frame);
+        h.sender.sendKeypoints({...frame, pointSources: [{...frame.pointSources[0], data: new Float32Array([7, 8, 9])}, frame.pointSources[1]]});
+        assert.equal(h.sent.length, 1);
+        await h.worker();
+        assert.deepEqual([...workerDataStore.getLatestKeypoints()!.interleaved], [1, 2, 3, 4, 5, 6]);
+        h.main(); await h.drain();
+        assert.deepEqual([...workerDataStore.getLatestKeypoints()!.interleaved], [7, 8, 9, 4, 5, 6]);
+        assert.equal(h.sent[1].layout, undefined);
+        h.sender.sendKeypoints({pointNames: ['corner'], pointSources: [frame.pointSources[1]]});
+        await h.drain();
+        assert.deepEqual(workerDataStore.getLatestKeypoints()!.pointNames, ['corner']);
+        assert.deepEqual([...workerDataStore.getLatestKeypoints()!.interleaved], [4, 5, 6]);
+        assert.deepEqual([...firstValues], [1, 2, 3]);
+        assert.deepEqual([...secondValues], [90, 6, 4, 5]);
+        assert.equal(firstValues.buffer.byteLength, 12, 'source ownership never transfers');
+    } finally {await h.close();}
+});
+
+test('rejected source arrays do not exhaust the transfer pool or poison the next valid frame', async () => {
+    const h = harness();
+    try {
+        const frame = {pointNames: ['point'], pointSources: [{names: ['point'], data: new Float32Array([1, 2, 3])}]};
+        h.sender.sendKeypoints(frame); await h.drain();
+        for (let attempt = 0; attempt < 10; attempt++) {
+            assert.throws(() => h.sender.sendKeypoints({...frame, pointSources: [{...frame.pointSources[0], data: new Float32Array(1)}]}), /point storage/);
+        }
+        h.sender.sendKeypoints({...frame, pointSources: [{...frame.pointSources[0], data: new Float32Array([9, 8, 7])}]});
+        await h.drain();
+        assert.deepEqual([...workerDataStore.getLatestKeypoints()!.interleaved], [9, 8, 7]);
+    } finally {await h.close();}
+});
+
+test('delayed receipt coalesces latest frame and replacement does not wait for current buffer return', async () => {
+    const h = harness();
+    try {
+        for (let value = 0; value < 100; value++) h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([value, 2, 3])});
+        assert.equal(h.sent.length, 1);
+        await h.worker();
+        assert.equal(workerDataStore.getLatestKeypoints()!.interleaved[0], 0);
+        assert.equal(h.toMain.filter(message => message.type === 'viewportBufferReturned').length, 0);
+        h.main();
+        assert.equal(h.sent.length, 2, 'receipt permits a replacement while previous presentation is held');
+        await h.drain();
+        assert.equal(workerDataStore.getLatestKeypoints()!.interleaved[0], 99);
+        for (let value = 100; value < 120; value++) {
+            h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([value, 2, 3])});
+            await h.drain();
+        }
+        assert.equal(h.toWorker.length, 0);
+        assert.equal(h.toMain.length, 0);
+        assert.equal(workerDataStore.getLatestKeypoints()!.interleaved[0], 119);
+    } finally {await h.close();}
+});
+
+test('fresh model packets replace missing values and disconnected presentation expires without input', async t => {
+    t.mock.timers.enable({apis: ['setTimeout']});
+    let now = 0;
+    t.mock.method(performance, 'now', () => now);
+    const h = harness();
+    try {
+        await h.drain();
+        workerDataStore.dispatch('livePresentation', true);
+        h.sender.sendModels([modelFrame(0, 1), modelFrame(1, 2)]); await h.drain();
+        const firstBuffer = workerDataStore.getLatestModelFrames()![1].mappedKeypoints!.data.buffer;
+        h.sender.sendModels([modelFrame(0, 3), modelFrame(1, NaN)]); await h.drain();
+        let frames = workerDataStore.getLatestModelFrames()!;
+        assert.deepEqual(frames.map(frame => frame.mappedKeypoints!.data[0]), [3, NaN]);
+        assert.equal(firstBuffer.byteLength, 0);
+        const secondBuffer = frames[0].mappedKeypoints!.data.buffer;
+        h.sender.sendModels([modelFrame(0, NaN), modelFrame(1, 4)]); await h.drain();
+        frames = workerDataStore.getLatestModelFrames()!;
+        assert.deepEqual(frames.map(frame => frame.mappedKeypoints!.data[0]), [NaN, 4]);
+        assert.equal(firstBuffer.byteLength, 0);
+        const thirdBuffer = frames[1].mappedKeypoints!.data.buffer;
+        h.sender.sendModels([modelFrame(0, NaN), modelFrame(1, NaN)]); await h.drain();
+        assert.equal(secondBuffer.byteLength, 0); assert.equal(thirdBuffer.byteLength, 0);
+        now = 1001; t.mock.timers.tick(1001); await h.drain();
+        assert.deepEqual(workerDataStore.getLatestModelFrames(), []);
+        assert.equal(secondBuffer.byteLength, 0); assert.equal(thirdBuffer.byteLength, 0);
+    } finally {await h.close();}
+});
+
+test('camera pause holds owned model and point buffers; resume and teardown still release them', async t => {
+    t.mock.timers.enable({apis: ['setTimeout']});
+    let now = 0;
+    t.mock.method(performance, 'now', () => now);
+    const h = harness();
+    try {
+        await h.drain();
+        workerDataStore.dispatch('livePresentation', true);
+        h.sender.sendModels([modelFrame(0, 7)]);
+        h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([7, 8, 9])});
+        await h.drain();
+        const model = workerDataStore.getLatestModelFrames()![0];
+        const points = workerDataStore.getLatestKeypoints()!;
+        const held = [model.mappedKeypoints!.data.buffer, points.interleaved.buffer];
+        workerDataStore.dispatch('presentationPaused', true);
+        now = 300_000; t.mock.timers.tick(300_000); await h.drain();
+        assert.equal(workerDataStore.getLatestModelFrames()![0], model);
+        assert.equal(workerDataStore.getLatestKeypoints(), points);
+        assert.ok(held.every(buffer => buffer.byteLength > 0), 'paused renderer retains buffer ownership');
+        workerDataStore.dispatch('presentationPaused', false);
+        now += 500; t.mock.timers.tick(500); await h.drain();
+        assert.equal(workerDataStore.getLatestModelFrames()![0], model, 'resume allows a new frame to arrive');
+        h.sender.sendModels([modelFrame(0, 8)]); await h.drain();
+        assert.equal(workerDataStore.getLatestModelFrames()![0].mappedKeypoints!.data[0], 8);
+        assert.equal(held[0].byteLength, 0, 'replacement releases the held model');
+        now += 1001; t.mock.timers.tick(1001); await h.drain();
+        assert.deepEqual(workerDataStore.getLatestModelFrames(), []);
+        assert.equal(held[1].byteLength, 0, 'unexpected input loss expires again after resume');
+        workerDataStore.dispatch('presentationPaused', true);
+        h.sender.sendModels([modelFrame(0, 9)]); await h.drain();
+        const last = workerDataStore.getLatestModelFrames()![0].mappedKeypoints!.data.buffer;
+        await h.close();
+        assert.equal(last.byteLength, 0, 'teardown releases paused buffers');
+    } finally {await h.close();}
+});
+
+test('session reset drops pending delivery, preserves static models and ignores stale packets', async () => {
+    const h = harness();
+    try {
+        await h.drain();
+        const definitions = [{model_id: 'static-model'}];
+        workerDataStore.dispatch('models', definitions);
+        h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([1, 2, 3])});
+        const stale = h.toWorker.shift();
+        h.receiver.receive({type: 'viewportFrameStart', sessionId: 'next-session'});
+        h.receiver.receive(stale);
+        assert.equal(workerDataStore.getLatestKeypoints()!.interleaved.length, 0);
+        assert.equal(workerDataStore.getModels(), definitions);
+        h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([9, 8, 7])});
+        h.sender.dispose();
+        await h.drain();
+        assert.equal(h.sent.length, 1, 'pending frame was discarded on dispose');
+        assert.equal(workerDataStore.getLatestKeypoints()!.interleaved.length, 0);
+    } finally {h.receiver.reset(); await h.close();}
+});
+
+test('model codec preserves double precision scalars, optional channels and either quaternion side', () => {
+    for (const side of ['world', 'local'] as const) {
+        const source = modelFrame(7, 4);
+        if (side === 'local') source.rotations = {boneNames: ['bone'], worldQuaternions: new Float32Array(), localQuaternions: new Float32Array([0, 1, 0, 0])};
+        const layout = prepareFrameLayout('modelFrames', [source]);
+        const buffer = new ArrayBuffer(layout.byteLength);
+        writeFrameBuffer(buffer, layout, 'modelFrames', [source]);
+        const [actual] = readFrameBuffer(buffer, layout, 'modelFrames') as ResolvedModelFrame[];
+        assert.deepEqual(actual, source);
+        assert.equal(source.mappedKeypoints!.data.buffer.byteLength, 12);
+        assert.equal(actual.rotations![side === 'world' ? 'localQuaternions' : 'worldQuaternions'].length, 0);
+    }
+});
+
+test('explicit missing points replace the previous values and release their transfer storage', async () => {
+    const h = harness();
+    try {
+        await h.drain(); workerDataStore.dispatch('livePresentation', true);
+        h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([1, 2, 3])}); await h.drain();
+        const held = workerDataStore.getLatestKeypoints()!.interleaved;
+        h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([NaN, NaN, NaN])}); await h.drain();
+        assert.equal(held.buffer.byteLength, 0);
+        assert.ok(workerDataStore.getLatestKeypoints()!.interleaved.every(Number.isNaN));
+        h.sender.sendKeypoints({pointNames: ['point'], interleaved: new Float32Array([4, 5, 6])}); await h.drain();
+        assert.equal(held.buffer.byteLength, 0);
+        const replacement = workerDataStore.getLatestKeypoints()!.interleaved;
+        h.receiver.reset(); await h.drain();
+        assert.equal(replacement.buffer.byteLength, 0);
+        assert.equal(workerDataStore.getLatestKeypoints()!.interleaved.length, 0);
+    } finally {await h.close();}
+});
+
+test('pool preserves replacement capacity when a smaller model set changes layout', async t => {
+    t.mock.timers.enable({apis: ['setTimeout']});
+    let now = 0;
+    t.mock.method(performance, 'now', () => now);
+    const h = harness();
+    try {
+        await h.drain(); workerDataStore.dispatch('livePresentation', true);
+        // Every packet describes its complete model set, including missing values.
+        for (let updated = 0; updated < 4; updated++) {
+            h.sender.sendModels([0, 1, 2, 3].map(index => modelFrame(index, index === updated ? index + 1 : NaN)));
+            await h.drain();
+        }
+        const retained = workerDataStore.getLatestModelFrames()!;
+        assert.equal(retained.length, 4);
+        assert.equal(new Set(retained.map(frame => frame.mappedKeypoints!.data.buffer)).size, 1);
+        const before = h.sent.length;
+        const changed = modelFrame(9, 99);
+        changed.mappedKeypoints = {names: ['first', 'second'], data: new Float32Array([1, 2, 3, 4, 5, 6])};
+        h.sender.sendModels([changed]); await h.drain();
+        assert.equal(h.sent.length, before + 1, 'retained model packets must not delay a changed layout');
+        assert.ok(h.sent.at(-1).layout);
+        assert.deepEqual(workerDataStore.getLatestModelFrames()!.map(frame => frame.instanceId), [9]);
+        assert.deepEqual(Array.from(workerDataStore.getLatestModelFrames()!.at(-1)!.mappedKeypoints!.data), [1, 2, 3, 4, 5, 6]);
+        now = 1001; t.mock.timers.tick(1001); await h.drain();
+        assert.equal(h.sent.length, before + 1);
+        assert.deepEqual(workerDataStore.getLatestModelFrames(), []);
+    } finally {await h.close();}
+});
+
+test('replacing live identities returns obsolete packets without waiting for disconnect expiry', async t => {
+    t.mock.timers.enable({apis: ['setTimeout']});
+    let now = 0;
+    t.mock.method(performance, 'now', () => now);
+    const h = harness();
+    try {
+        await h.drain(); workerDataStore.dispatch('livePresentation', true);
+        const held: ArrayBufferLike[] = [];
+        for (let instance = 0; instance < 9; instance++) {
+            h.sender.sendModels([modelFrame(instance, instance + 1)]);
+            await h.drain();
+            const frames = workerDataStore.getLatestModelFrames()!;
+            assert.equal(frames.length, 1, 'the new complete model set replaces the previous set');
+            held.push(frames.at(-1)!.mappedKeypoints!.data.buffer);
+        }
+        assert.equal(h.sent.length, 9);
+        assert.ok(held.slice(0, -1).every(buffer => buffer.byteLength === 0));
+        assert.ok(held.at(-1)!.byteLength > 0);
+        now = 1001; t.mock.timers.tick(1001); await h.drain();
+        assert.deepEqual(workerDataStore.getLatestModelFrames(), []);
+        assert.ok(held.every(buffer => buffer.byteLength === 0), 'expired worker references all returned to sender');
+        h.sender.sendModels([modelFrame(20, 21)]); await h.drain();
+        assert.equal(workerDataStore.getLatestModelFrames()![0].instanceId, 20);
+    } finally {await h.close();}
+});

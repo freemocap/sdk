@@ -1,0 +1,792 @@
+/* How to add icons to the design system
+
+1. Ask the team to share the Figma file with you so you can collaborate.
+
+2. Icons are drawn on a 20px square viewBox with strokes converted to solid shapes before export.
+
+3. To add an icon to the codebase, first import the SVG file into `assets/icons/`.
+
+4. Add the icon to `icons.css` as a variable so it can be reused easily throughout the design system.
+
+5. Add a class at the bottom of `icons.css` that uses that variable.
+
+How icons are coloured:
+A single-ink icon is drawn as a CSS mask filled with a colour token, so it follows the theme:
+
+    .camera-icon {
+      -webkit-mask-image: var(--camera-icon);
+      mask-image: var(--camera-icon);
+      background-color: var(--color-icon-idle);
+    }
+
+The SVG's own fill colour is ignored; only its shape is used. Pick the fill from color.css:
+`--color-icon-idle` (default grey), `--color-icon-primary` (bright), `--color-icon-active` (selected / on),
+or a status colour (`--color-success`, `--color-warning`, `--color-danger`).
+
+An icon with more than one ink, an SVG filter or an animation inside the SVG cannot be a mask. Its class
+uses `background-image: var(--name-icon);` instead and keeps the colours baked into the file.
+
+Study the codebase HTML structure carefully. You will notice that whenever icons are used for buttons, we use the following class structure:
+
+- `icon`
+- `import-icon`
+- `icon-size-20`
+
+`icon` indicates that the HTML DOM element contains an icon (it sets mask and background sizing).
+`import-icon` defines the shape and fill colour used by the app.
+`icon-size-20` defines the icon size.
+*/
+/* icons vars */
+:root {
+  --plus-icon: url("../assets/icons/plus_icon.svg");
+  --checkUpdate-icon: url("../assets/icons/checkUpdate_icon.svg");
+  --upToDate-icon: url("../assets/icons/upToDate_icon.svg");
+  --updateAvailable-icon: url("../assets/icons/updateAvailable_icon.svg");
+  --minus-icon: url("../assets/icons/minus_icon.svg");
+  --close-icon: url("../assets/icons/close_icon.svg");
+  --rotate-icon: url("../assets/icons/rotate_icon.svg");
+  --pause-icon: url("../assets/icons/pause_icon.svg");
+  --play-icon: url("../assets/icons/play_icon.svg");
+  --scan-icon: url("../assets/icons/scan_icon.svg");
+  --home-icon: url("../assets/icons/home_icon.svg");
+  --clear-icon: url("../assets/icons/clear_icon.svg");
+  --load-icon: url("../assets/icons/load_icon.svg");
+  --live-icon: url("../assets/icons/live_icon.svg");
+  --snaptogrid-icon: url("../assets/icons/snaptogrid_icon.svg");
+  --blender-icon: url("../assets/icons/blender_icon.svg");
+  --calibrating-icon: url("../assets/icons/calibrating-icon.svg");
+  --stop-alert-icon: url("../assets/icons/stop_alert_icon.svg");
+  --stop-icon: url("../assets/icons/stop_icon.svg");
+  --fit-icon: url("../assets/icons/fit_icon.svg");
+  --import-icon: url("../assets/icons/import_icon.svg");
+  --importVideos-icon: url("../assets/icons/importvideos_icon.svg");
+  --github-icon: url("../assets/icons/github_icon.svg");
+  --externallink-icon: url("../assets/icons/externallink_icon.svg");
+  --dropdown-icon: url("../assets/icons/dropdown_icon.svg");
+  --stream-icon: url("../assets/icons/stream_icon.svg");
+  --stopstreaming-icon: url("../assets/icons/stopstreaming_icon.svg");
+  --streaming-icon: url("../assets/icons/streaming_icon.svg");
+  --calibrate-icon: url("../assets/icons/calibrate_icon.svg");
+  --calibrated-icon: url("../assets/icons/calibrated_icon.svg");
+  --cancelcalibrate-icon: url("../assets/icons/cancelcalibrate_icon.svg");
+  --camera-icon: url("../assets/icons/camera_icon.svg");
+  --explainer-icon: url("../assets/icons/explainer_icon.svg");
+  --expand-icon: url("../assets/icons/expand_icon.svg");
+  --collapse-icon: url("../assets/icons/collapse_icon.svg");
+  --copyover-icon: url("../assets/icons/copyover_icon.svg");
+  --save-icon: url("../assets/icons/save_icon.svg");
+  --frame-icon: url("../assets/icons/frame_icon.svg");
+  --grid-icon: url("../assets/icons/grid_icon.svg");
+  --copy-icon: url("../assets/icons/copy_icon.svg");
+  --scrolldown-icon: url("../assets/icons/scrolldown_icon.svg");
+  --scrollup-icon: url("../assets/icons/scrollup_icon.svg");
+
+  --mic-icon: url("../assets/icons/mic_icon.svg");
+  --mic-active-icon: url("../assets/icons/mic_active_icon.svg");
+  --processmocap-icon: url("../assets/icons/processmocap_icon.svg");
+  --video-icon: url("../assets/icons/video_icon.svg");
+  --recommendexposure-icon: url("../assets/icons/recommendexposure_icon.svg");
+  --record-icon: url("../assets/icons/record_icon.svg");
+  --calibrate-icon: url("../assets/icons/calibrate_icon.svg");
+  --back-icon: url("../assets/icons/back_icon.svg");
+  --copied-icon: url("../assets/icons/copied_icon.svg");
+  --frameforward-icon: url("../assets/icons/frameforward_icon.svg");
+  --framebackward-icon: url("../assets/icons/framebackward_icon.svg");
+  --loop-icon: url("../assets/icons/loop_icon.svg");
+  --loopactive-icon: url("../assets/icons/loopactive_icon.svg");
+  --skipbackward-icon: url("../assets/icons/skipbackward_icon.svg");
+  --skipforward-icon: url("../assets/icons/skipforward_icon.svg");
+
+  --learn-icon: url("../assets/icons/learn_icon.svg");
+  --discord-icon: url("../assets/icons/discord_icon.svg");
+  --connected-icon: url("../assets/icons/connected_icon.svg");
+  --warning-icon: url("../assets/icons/warning_icon.svg");
+  --loader-icon: url("../assets/icons/loader_icon.svg");
+  --donate-icon: url("../assets/icons/donate_icon.svg");
+  --subcat-icon: url("../assets/icons/subcat_icon.svg");
+  --download-icon: url("../assets/icons/download_icon.svg");
+  --search-icon: url("../assets/icons/search_icon.svg");
+
+  --settings-icon: url("../assets/icons/settings_icon.svg");
+  --subfolder_icon: url("../assets/icons/subfolder_icon.svg");
+  --addsubfolder_icon: url("../assets/icons/addsubfolder_icon.svg");
+  --file_icon: url("../assets/icons/file_icon.svg");
+
+  --importproject_icon: url("../assets/icons/importproject_icon.svg");
+  --settings_icon: url("../assets/icons/settings_icon.svg");
+  --tag_icon: url("../assets/icons/tag_icon.svg");
+  --tag_active_icon: url("../assets/icons/tag_active_icon.svg");
+
+
+  --grid4_icon: url("../assets/icons/grid4_icon.svg");
+  --grid3_icon: url("../assets/icons/grid3_icon.svg");
+  --grid2_icon: url("../assets/icons/grid2_icon.svg");
+
+  --tomlfile-icon: url("../assets/icons/tomlfile_icon.svg");
+  --sort-icon: url("../assets/icons/sort_icon.svg");
+
+  --importvideo-icon: url("../assets/icons/importvideo_icon.svg");
+  --filter-icon: url("../assets/icons/filter_icon.svg");
+  --filter-active-icon: url("../assets/icons/filter_active_icon.svg");
+
+  --live-active-icon: url("../assets/icons/live_active_icon.svg");
+  --twodtracking-active-icon: url("../assets/icons/2dtracking_active_icon.svg");
+  --threedtracking-active-icon: url("../assets/icons/3dtracking_active_icon.svg");
+  --triangulate-active-icon: url("../assets/icons/triangulate_active_icon.svg");
+  --skeleton-active-icon: url("../assets/icons/skeleton_active_icon.svg");
+  --skeletonfilter-active-icon: url("../assets/icons/skeletonfilter_active_icon.svg");
+  --skeletonfilter-icon: url("../assets/icons/skeletonfilter_icon.svg");
+  --twodtracking-icon: url("../assets/icons/2dtracking_icon.svg");
+  --threedtracking-icon: url("../assets/icons/3dtracking_icon.svg");
+  --triangulate-icon: url("../assets/icons/triangulate_icon.svg");
+  --skeleton-icon: url("../assets/icons/skeleton_icon.svg");
+  --charuco-icon: url("../assets/icons/charuco_icon.svg");
+  --charuco-active-icon: url("../assets/icons/charuco_active_icon.svg");
+  --autoexposure-icon: url("../assets/icons/autoexposure_icon.svg");
+}
+
+
+/* icon type */
+.close-icon {
+  -webkit-mask-image: var(--close-icon);
+  mask-image: var(--close-icon);
+  background-color: var(--color-icon-idle);
+}
+.fit-icon {
+  -webkit-mask-image: var(--fit-icon);
+  mask-image: var(--fit-icon);
+  background-color: var(--color-icon-idle);
+}
+.autoexposure-icon {
+  -webkit-mask-image: var(--autoexposure-icon);
+  mask-image: var(--autoexposure-icon);
+  background-color: var(--color-icon-idle);
+}
+.stop-alert-icon {
+  -webkit-mask-image: var(--stop-alert-icon);
+  mask-image: var(--stop-alert-icon);
+  background-color: var(--color-danger);
+}
+.stop-icon {
+  -webkit-mask-image: var(--stop-icon);
+  mask-image: var(--stop-icon);
+  background-color: var(--color-icon-idle);
+}
+.sort-icon {
+  -webkit-mask-image: var(--sort-icon);
+  mask-image: var(--sort-icon);
+  background-color: var(--color-icon-idle);
+}
+.sortup-icon {
+  -webkit-mask-image: var(--sort-icon);
+  mask-image: var(--sort-icon);
+  background-color: var(--color-icon-idle);
+  transform: rotate(180deg);
+}
+.frame-icon {
+  -webkit-mask-image: var(--frame-icon);
+  mask-image: var(--frame-icon);
+  background-color: var(--color-icon-idle);
+}
+.grid-icon {
+  -webkit-mask-image: var(--grid-icon);
+  mask-image: var(--grid-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.mic-icon {
+  -webkit-mask-image: var(--mic-icon);
+  mask-image: var(--mic-icon);
+  background-color: var(--color-icon-idle);
+}
+.snaptogrid-icon {
+  -webkit-mask-image: var(--snaptogrid-icon);
+  mask-image: var(--snaptogrid-icon);
+  background-color: var(--color-icon-idle);
+}
+.filter-icon {
+  -webkit-mask-image: var(--filter-icon);
+  mask-image: var(--filter-icon);
+  background-color: var(--color-icon-idle);
+}
+.filter-active-icon {
+  -webkit-mask-image: var(--filter-active-icon);
+  mask-image: var(--filter-active-icon);
+  background-color: var(--color-icon-primary);
+}
+
+.mic-active-icon {
+  -webkit-mask-image: var(--mic-active-icon);
+  mask-image: var(--mic-active-icon);
+  background-color: var(--color-icon-active);
+}
+
+.close-icon {
+  -webkit-mask-image: var(--close-icon);
+  mask-image: var(--close-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.expand-icon {
+  -webkit-mask-image: var(--expand-icon);
+  mask-image: var(--expand-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.collapse-icon {
+  -webkit-mask-image: var(--collapse-icon);
+  mask-image: var(--collapse-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.rotate-icon {
+  -webkit-mask-image: var(--rotate-icon);
+  mask-image: var(--rotate-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.pause-icon {
+  -webkit-mask-image: var(--pause-icon);
+  mask-image: var(--pause-icon);
+  background-color: var(--color-icon-primary);
+}
+
+.play-icon {
+  -webkit-mask-image: var(--play-icon);
+  mask-image: var(--play-icon);
+  background-color: var(--color-icon-primary);
+}
+
+.back-icon {
+  -webkit-mask-image: var(--back-icon);
+  mask-image: var(--back-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.search-icon {
+  -webkit-mask-image: var(--search-icon);
+  mask-image: var(--search-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.clear-icon {
+  -webkit-mask-image: var(--clear-icon);
+  mask-image: var(--clear-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.load-icon {
+  -webkit-mask-image: var(--load-icon);
+  mask-image: var(--load-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.home-icon {
+  -webkit-mask-image: var(--home-icon);
+  mask-image: var(--home-icon);
+  background-color: var(--color-icon-idle);
+}
+.arrowdown-icon {
+  -webkit-mask-image: var(--dropdown-icon);
+  mask-image: var(--dropdown-icon);
+  background-color: var(--color-icon-dim);
+}
+.arrowup-icon {
+  -webkit-mask-image: var(--dropdown-icon);
+  mask-image: var(--dropdown-icon);
+  background-color: var(--color-icon-dim);
+  transform: rotate(180deg);
+}
+.arrowright-icon {
+  -webkit-mask-image: var(--dropdown-icon);
+  mask-image: var(--dropdown-icon);
+  background-color: var(--color-icon-dim);
+  transform: rotate(90deg);
+}
+.arrowleft-icon {
+  -webkit-mask-image: var(--dropdown-icon);
+  mask-image: var(--dropdown-icon);
+  background-color: var(--color-icon-dim);
+  transform: rotate(-90deg);
+}
+
+.scan-icon {
+  -webkit-mask-image: var(--scan-icon);
+  mask-image: var(--scan-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.externallink-icon {
+  -webkit-mask-image: var(--externallink-icon);
+  mask-image: var(--externallink-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.stream-icon {
+  background-image: var(--stream-icon);
+}
+
+.stopstreaming-icon {
+  -webkit-mask-image: var(--stopstreaming-icon);
+  mask-image: var(--stopstreaming-icon);
+  background-color: var(--color-danger);
+}
+.blender-icon {
+  -webkit-mask-image: var(--blender-icon);
+  mask-image: var(--blender-icon);
+  background-color: var(--color-icon-idle);
+}
+.calibrating-icon {
+  background-image: var(--calibrating-icon);
+}
+.tag-icon {
+  -webkit-mask-image: var(--tag_icon);
+  mask-image: var(--tag_icon);
+  background-color: var(--color-icon-idle);
+}
+.tag-active-icon {
+  -webkit-mask-image: var(--tag_active_icon);
+  mask-image: var(--tag_active_icon);
+  background-color: var(--color-icon-primary);
+}
+
+.streaming-icon {
+  background-image: var(--streaming-icon);
+}
+
+.calibrate-icon {
+  -webkit-mask-image: var(--calibrate-icon);
+  mask-image: var(--calibrate-icon);
+  background-color: var(--color-icon-primary);
+}
+
+.explainer-icon {
+  -webkit-mask-image: var(--explainer-icon);
+  mask-image: var(--explainer-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.calibrated-icon {
+  -webkit-mask-image: var(--calibrated-icon);
+  mask-image: var(--calibrated-icon);
+  background-color: var(--color-success);
+}
+.cancelcalibrate-icon {
+  -webkit-mask-image: var(--cancelcalibrate-icon);
+  mask-image: var(--cancelcalibrate-icon);
+  background-color: var(--color-danger);
+}
+
+.subfolder-icon {
+  -webkit-mask-image: var(--subfolder_icon);
+  mask-image: var(--subfolder_icon);
+  background-color: var(--color-icon-idle);
+}
+
+.file-icon {
+  -webkit-mask-image: var(--file_icon);
+  mask-image: var(--file_icon);
+  background-color: var(--color-icon-idle);
+}
+
+.grid4-icon {
+  -webkit-mask-image: var(--grid4_icon);
+  mask-image: var(--grid4_icon);
+  background-color: var(--color-icon-idle);
+}
+
+.grid3-icon {
+  -webkit-mask-image: var(--grid3_icon);
+  mask-image: var(--grid3_icon);
+  background-color: var(--color-icon-idle);
+}
+
+.grid2-icon {
+  -webkit-mask-image: var(--grid2_icon);
+  mask-image: var(--grid2_icon);
+  background-color: var(--color-icon-idle);
+}
+
+.settings-icon {
+  -webkit-mask-image: var(--settings_icon);
+  mask-image: var(--settings_icon);
+  background-color: var(--color-icon-idle);
+}
+
+.plus-icon {
+  -webkit-mask-image: var(--plus-icon);
+  mask-image: var(--plus-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.checkUpdate-icon {
+  -webkit-mask-image: var(--checkUpdate-icon);
+  mask-image: var(--checkUpdate-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.upToDate-icon {
+  -webkit-mask-image: var(--upToDate-icon);
+  mask-image: var(--upToDate-icon);
+  background-color: var(--color-success);
+}
+.charuco-icon {
+  -webkit-mask-image: var(--charuco-icon);
+  mask-image: var(--charuco-icon);
+  background-color: var(--color-icon-idle);
+}
+.charuco-active-icon {
+  -webkit-mask-image: var(--charuco-active-icon);
+  mask-image: var(--charuco-active-icon);
+  background-color: var(--color-icon-active);
+}
+
+.updateAvailable-icon {
+  background-image: var(--updateAvailable-icon);
+}
+
+.addsubfolder-icon {
+  -webkit-mask-image: var(--addsubfolder_icon);
+  mask-image: var(--addsubfolder_icon);
+  background-color: var(--color-icon-idle);
+}
+
+
+.minus-icon {
+  -webkit-mask-image: var(--minus-icon);
+  mask-image: var(--minus-icon);
+  background-color: var(--color-icon-idle);
+}
+
+/* icon types */
+.live-icon {
+  -webkit-mask-image: var(--live-icon);
+  mask-image: var(--live-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.import-icon {
+  -webkit-mask-image: var(--import-icon);
+  mask-image: var(--import-icon);
+  background-color: var(--color-icon-primary);
+}
+
+.importVideos-icon {
+  -webkit-mask-image: var(--importVideos-icon);
+  mask-image: var(--importVideos-icon);
+  background-color: var(--color-icon-primary);
+}
+
+.github-icon {
+  -webkit-mask-image: var(--github-icon);
+  mask-image: var(--github-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.discord-icon {
+  -webkit-mask-image: var(--discord-icon);
+  mask-image: var(--discord-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.connected-icon {
+  background-image: var(--connected-icon);
+}
+
+.copyover-icon {
+  -webkit-mask-image: var(--copyover-icon);
+  mask-image: var(--copyover-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.loop-icon {
+  -webkit-mask-image: var(--loop-icon);
+  mask-image: var(--loop-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.copy-icon {
+  -webkit-mask-image: var(--copy-icon);
+  mask-image: var(--copy-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.copied-icon {
+  -webkit-mask-image: var(--copied-icon);
+  mask-image: var(--copied-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.scrolldown-icon {
+  -webkit-mask-image: var(--scrolldown-icon);
+  mask-image: var(--scrolldown-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.save-icon {
+  -webkit-mask-image: var(--save-icon);
+  mask-image: var(--save-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.scrollup-icon {
+  -webkit-mask-image: var(--scrollup-icon);
+  mask-image: var(--scrollup-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.loopactive-icon {
+  -webkit-mask-image: var(--loopactive-icon);
+  mask-image: var(--loopactive-icon);
+  background-color: var(--color-icon-active);
+}
+
+.frameforward-icon {
+  -webkit-mask-image: var(--frameforward-icon);
+  mask-image: var(--frameforward-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.framebackward-icon {
+  -webkit-mask-image: var(--framebackward-icon);
+  mask-image: var(--framebackward-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.skipforward-icon {
+  -webkit-mask-image: var(--skipforward-icon);
+  mask-image: var(--skipforward-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.skipbackward-icon {
+  -webkit-mask-image: var(--skipbackward-icon);
+  mask-image: var(--skipbackward-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.loader-icon {
+  background-image: var(--loader-icon);
+  animation: spin-ramp 2s infinite;
+  animation-timing-function: cubic-bezier(0.95, 0.17, 0.37, 0.72);
+}
+
+.warning-icon {
+  -webkit-mask-image: var(--warning-icon);
+  mask-image: var(--warning-icon);
+  background-color: var(--color-warning);
+}
+
+.donate-icon {
+  -webkit-mask-image: var(--donate-icon);
+  mask-image: var(--donate-icon);
+  background-color: var(--color-danger);
+}
+
+.recommendexposure-icon {
+  -webkit-mask-image: var(--recommendexposure-icon);
+  mask-image: var(--recommendexposure-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.record-icon {
+  -webkit-mask-image: var(--record-icon);
+  mask-image: var(--record-icon);
+  background-color: var(--color-icon-primary);
+}
+
+.calibrate-icon {
+  -webkit-mask-image: var(--calibrate-icon);
+  mask-image: var(--calibrate-icon);
+  background-color: var(--color-icon-primary);
+}
+
+.learn-icon {
+  -webkit-mask-image: var(--learn-icon);
+  mask-image: var(--learn-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.subcat-icon {
+  -webkit-mask-image: var(--subcat-icon);
+  mask-image: var(--subcat-icon);
+  background-color: var(--color-icon-dim);
+}
+
+.download-icon {
+  -webkit-mask-image: var(--download-icon);
+  mask-image: var(--download-icon);
+  background-color: var(--color-icon-idle);
+}
+
+.processmocap-icon {
+  -webkit-mask-image: var(--processmocap-icon);
+  mask-image: var(--processmocap-icon);
+  background-color: var(--color-icon-primary);
+}
+.twodtracking-active-icon {
+  -webkit-mask-image: var(--twodtracking-active-icon);
+  mask-image: var(--twodtracking-active-icon);
+  background-color: var(--color-icon-active);
+}
+.live-active-icon {
+  background-image: var(--live-active-icon);
+}
+.threedtracking-active-icon {
+  -webkit-mask-image: var(--threedtracking-active-icon);
+  mask-image: var(--threedtracking-active-icon);
+  background-color: var(--color-icon-active);
+}
+.triangulate-active-icon {
+  -webkit-mask-image: var(--triangulate-active-icon);
+  mask-image: var(--triangulate-active-icon);
+  background-color: var(--color-icon-active);
+}
+.skeleton-active-icon {
+  -webkit-mask-image: var(--skeleton-active-icon);
+  mask-image: var(--skeleton-active-icon);
+  background-color: var(--color-icon-active);
+}
+.skeletonfilter-active-icon {
+  -webkit-mask-image: var(--skeletonfilter-active-icon);
+  mask-image: var(--skeletonfilter-active-icon);
+  background-color: var(--color-icon-active);
+}
+.twodtracking-icon {
+  -webkit-mask-image: var(--twodtracking-icon);
+  mask-image: var(--twodtracking-icon);
+  background-color: var(--color-icon-idle);
+}
+.threedtracking-icon {
+  -webkit-mask-image: var(--threedtracking-icon);
+  mask-image: var(--threedtracking-icon);
+  background-color: var(--color-icon-idle);
+}
+.triangulate-icon {
+  -webkit-mask-image: var(--triangulate-icon);
+  mask-image: var(--triangulate-icon);
+  background-color: var(--color-icon-idle);
+}
+.skeleton-icon {
+  -webkit-mask-image: var(--skeleton-icon);
+  mask-image: var(--skeleton-icon);
+  background-color: var(--color-icon-idle);
+}
+.skeletonfilter-icon {
+  -webkit-mask-image: var(--skeletonfilter-icon);
+  mask-image: var(--skeletonfilter-icon);
+  background-color: var(--color-icon-idle);
+}
+.tomlfile-icon {
+  -webkit-mask-image: var(--tomlfile-icon);
+  mask-image: var(--tomlfile-icon);
+  background-color: var(--color-icon-idle);
+}
+.tomlfile-icon {
+  -webkit-mask-image: var(--tomlfile-icon);
+  mask-image: var(--tomlfile-icon);
+  background-color: var(--color-icon-idle);
+}
+.importvideo-icon {
+  -webkit-mask-image: var(--importvideo-icon);
+  mask-image: var(--importvideo-icon);
+  background-color: var(--color-icon-idle);
+}
+
+/* =========================
+   icons buttons
+   ========================= */
+
+.icon-size-12 {
+  min-width: 12px;
+  min-height: 12px;
+}
+
+.icon-size-20 {
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+}
+
+.icon-size-25 {
+  width: 25px;
+  height: 25px;
+}
+
+.icon-size-25 {
+  width: 25px;
+  height: 25px;
+}
+
+.icon-size-32 {
+  width: 32px;
+  height: 32px;
+}
+
+.icon-size-42 {
+  width: 42px;
+  height: 42px;
+}
+
+.icon-button {
+
+  align-items: center;
+  display: flex;
+  justify-content: center;
+}
+
+.icon-button.deactivated {
+
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+/* button icons variants */
+.primary {
+  background-color: var(--color-bg-primary);
+}
+
+.icon-button.tertiary {
+  background-color: transparent;
+}
+
+.icon-button.tertiary:hover {
+  filter: brightness(1.2);
+}
+
+.primary:hover {
+  background-color: var(--color-danger-idle);
+}
+
+.icon-button:hover>.icon {
+  filter: brightness(1);
+
+
+  transition: filter var(--speed-1) ease-in-out;
+}
+
+.icon-button:hover:not(.secondary, .tertiary) {
+
+  background-color: var(--color-surface-active);
+  /* filter animation out */
+  transition: filter var(--speed-1) ease-in-out;
+}
+
+.is-menu {
+    position: relative;
+}
+
+.is-menu::after {
+    content: "";
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 0;
+    height: 0;
+    border-style: solid;
+    border-width: 0 0 5px 5px;
+    border-color: transparent transparent var(--color-text-muted) transparent;
+    pointer-events: none;
+}
