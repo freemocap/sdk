@@ -22,7 +22,8 @@ export class PointCloudPlayer {
         this.emit(frame, capacity);
     }
     constructor(private readonly emit: (frame: CloudFrame | null, capacity: number) => void,
-        private readonly error: (error: Error) => void, private readonly fetcher: typeof fetch = fetch) {}
+        private readonly error: (error: Error) => void,
+        private readonly fetcher: typeof fetch = (...args) => globalThis.fetch(...args)) {}
     async open(url: string, reference: CloudReference): Promise<void> {
         this.close();
         const generation = this.generation;

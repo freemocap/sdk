@@ -32,6 +32,19 @@ test('cloud binary retains source identities and typed storage; rejects mismatch
     assert.throws(() => decodeCloudChunk(buffers[0], manifest, 0));
 });
 const flush = async () => {for (let i = 0; i < 8; i++) await new Promise(resolve => setImmediate(resolve));};
+test('default fetch retains the worker global receiver required by browser WebIDL', async () => {
+    const {manifest} = fixture();
+    const original = globalThis.fetch;
+    let calls = 0;
+    globalThis.fetch = async function(this: unknown) {
+        assert.equal(this, globalThis); calls++;
+        return new Response(JSON.stringify(manifest));
+    };
+    const errors: Error[] = [];
+    const player = new PointCloudPlayer(() => {}, error => errors.push(error));
+    try {await player.open('http://local/manifest.json', reference); assert.equal(calls, 1); assert.deepEqual(errors, []);}
+    finally {player.close(); globalThis.fetch = original;}
+});
 test('cloud cache is bounded across seeks and never emits a stale asynchronous frame', async () => {
     const {manifest, buffers} = fixture();
     let shown: CloudFrame | null = null;
