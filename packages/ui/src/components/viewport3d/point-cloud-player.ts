@@ -8,6 +8,7 @@ export class PointCloudPlayer {
     private generation = 0;
     private clock: number | null = null;
     private displayed = -1;
+    private lastMissing = -1;
     private lifetime = new AbortController();
     private cache = new Map<number, {frames: Map<number, CloudFrame>; bytes: number}>();
     private requests = new Map<number, AbortController>();
@@ -51,10 +52,11 @@ export class PointCloudPlayer {
         for (const [key, request] of this.requests) if (!wanted.has(key)) {request.abort(); this.requests.delete(key);}
         const cached = this.cache.get(chunk);
         if (cached) {
+            this.lastMissing = -1;
             this.cache.delete(chunk); this.cache.set(chunk, cached);
             if (this.displayed !== index) {this.publish(cached.frames.get(index)!, manifest.max_points); this.displayed = index; this.stats.displayedFrames++;}
         } else {
-            if (this.displayed !== -1) this.stats.missingFrames++;
+            if (this.lastMissing !== index) {this.stats.missingFrames++; this.lastMissing = index;}
             this.displayed = -1; this.publish(null, manifest.max_points);
         }
         for (const key of wanted) if (!this.cache.has(key) && !this.requests.has(key) && !this.failed.has(key)) this.load(key);
@@ -90,7 +92,7 @@ export class PointCloudPlayer {
     close(): void {
         this.generation++; this.lifetime.abort(); this.lifetime = new AbortController();
         for (const request of this.requests.values()) request.abort();
-        this.requests.clear(); this.cache.clear(); this.failed.clear(); this.manifest = null; this.clock = null; this.displayed = -1;
+        this.requests.clear(); this.cache.clear(); this.failed.clear(); this.manifest = null; this.clock = null; this.displayed = -1; this.lastMissing = -1;
         Object.assign(this.stats, {requests: 0, cacheBytes: 0, displayedFrames: 0, missingFrames: 0, fetchMs: 0});
         this.publish(null, 0);
     }

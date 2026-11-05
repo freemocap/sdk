@@ -53,7 +53,7 @@ only active ranges and changing draw count [@threeBufferAttribute2026;
 @threeBufferGeometry2026]. No per-point scene objects or full-recording cloud preload.
 
 The worker emits `pointCloudStats` every 500 ms with request count, resident bytes,
-displayed-frame count, missing-frame transitions, cumulative fetch/decode time,
+displayed-frame count, requested frames initially missing from cache, cumulative fetch/decode time,
 current local/source frame, timestamp and point count. `pointCloudError` reports
 loading or validation errors. These diagnostics supplement actual native render
 timing and video/model synchronization measurements; they do not establish FPS.
