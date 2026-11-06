@@ -1,4 +1,5 @@
 import {useId,type ReactNode} from 'react';
+import AnchoredInfo from '../components/ui-components/AnchoredInfo';
 
 export interface WorkspaceTab {id:string;label:string;panelId:string}
 /** Controlled tabs; the application owns panel lifetimes and persistence. */
@@ -30,7 +31,8 @@ export function RunActivity({stage,active,elapsedSeconds,completed,total,unit='s
         <strong role="status"><span className="sdk-run-indicator" aria-hidden="true"/>{stage}</strong>
         <span>{Math.max(0,Math.floor(elapsedSeconds))} s elapsed</span>
         {determinate&&<><span>{unit} {completed} / {total}</span><progress aria-label={`${unit} progress`} value={Math.min(total,Math.max(0,completed))} max={total}/></>}
-        {active&&updateAgeSeconds!==undefined&&<span className="sdk-run-freshness">{stale?'No update for':'Last update'} {Math.max(0,Math.floor(updateAgeSeconds))} s{stale?' · check connection and logs':' ago'}</span>}
+        {active&&updateAgeSeconds!==undefined&&<span className="sdk-run-freshness">{stale?'No update for':'Last update'} {Math.max(0,Math.floor(updateAgeSeconds))} s{stale?'':' ago'}</span>}
+        {stale&&<AnchoredInfo title="Run update status" text="Check the connection and logs for the current worker status."/>}
         {detail&&<span className="sdk-run-detail">{detail}</span>}
     </section>;
 }
