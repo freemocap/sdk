@@ -31,6 +31,11 @@ class LogHub(logging.Handler):
         self._sequence = 0
         self.dropped = 0
 
+    @property
+    def session_id(self) -> str:
+        """Stable for this hub's lifetime, including client reloads/reconnections."""
+        return self._session
+
     def emit(self, record: logging.LogRecord) -> None:
         try:
             text = record.getMessage()

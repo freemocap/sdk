@@ -50,3 +50,19 @@ test('wrapped measurements drive wire anchors and separate expanded rows',()=>{
     assert.ok(path.endsWith(`${to.x},${to.y+187}`));
     assert.equal((path.match(/Q/g)??[]).length,4,'all gutter corners are rounded');
 });
+
+test('single-row opt-in keeps four measured cards readable without changing default wrapping',()=>{
+    const {graph,metadata}=fixture();
+    graph.definition.nodes=graph.definition.nodes.slice(0,4);
+    graph.definition.edges=graph.definition.edges.slice(0,3);
+    graph.topological_order=graph.topological_order.slice(0,4);
+    const view=buildStageGraph(graph,metadata);
+    const layout=stageLayout(view,{pose:{height:900,ports:{}}},'single-row');
+    const boxes=[...layout.boxes.values()];
+    assert.equal(new Set(boxes.map(box=>box.y)).size,1);
+    assert.ok(boxes.every(box=>box.w===360));
+    assert.ok(layout.height>=boxes[3].y+900);
+    assert.ok(boxes.every((box,i)=>!i||box.x>=boxes[i-1].x+boxes[i-1].w));
+    assert.equal(layout.wires.length,3);
+    assert.equal(new Set([...stageLayout(view,{}).boxes.values()].map(box=>box.y)).size,2);
+});

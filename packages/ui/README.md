@@ -93,7 +93,30 @@ or network requests.
 
 ## Application logs
 
-`LogStore`, `LogTerminal`, and `BottomLogPanel` expose Core's bounded, virtualized log UI without Core stores or routes. Import `@freemocap/ui/styles.css` once. Create one `LogStore({storageKey: 'your-app.logs'})`, call `start()`, feed the existing transport's `subscribeToLog(record => store.add(record))`, then unsubscribe and `dispose()` on teardown. Omit storageKey for memory-only history. The 10,000-record memory cap, 300-record persisted tail, idle persistence and 500ms UI polling keep per-record work outside React rendering. Relay `log_id` values deduplicate replayed history.
+`LogStore`, `LogTerminal`, and `BottomLogPanel` expose Core's bounded,
+virtualized log UI without Core stores or routes. Import `@freemocap/ui/styles.css`
+once. Create one application-owned `LogStore({storageKey: 'your-app.logs'})`.
+After fetching the backend's lifetime identity, call `store.beginSession(id)`
+before subscribing or connecting the log stream, then call `start()` and feed
+`subscribeToLog(record => store.add(record))`. Expose the server `LogHub.session_id`
+through the application's existing status endpoint. The same identity survives
+page reloads; a new hub/backend has a new identity. Never use component mount,
+port number, or a newly generated browser UUID as the session identity.
+
+The constructor restores nothing until `beginSession` confirms the session.
+Same-session history restores without an artificial restart divider; a new
+session clears the viewer. Repeated calls with the same ID are harmless.
+Register `beforeunload` to call `persistNow()`. On application teardown,
+unsubscribe, remove that listener, and call `dispose()`. Panel visibility does
+not own any of these operations; collection continues while the panel is hidden.
+
+Persistence retains the full 10,000-record bounded history, not a smaller tail.
+Record JSON is cached incrementally; periodic writes still run at idle time.
+Browser storage quotas or disabled storage can prevent persistence: surface
+`store.persistenceError` in the application instead of claiming reload safety.
+Live collection continues after a storage failure and the next flush retries.
+Omit `storageKey` for memory-only history. `log_id` values deduplicate replayed
+history. This viewer storage is separate from durable training logs/artifacts.
 
 Mount `<BottomLogPanel store={store} title="Backend logs" initialHeight={210}/>` as a full-width bottom sibling of the application's main region. It owns the resize handle and displays the complete terminal without a duplicate heading row. Set `showHeader` only if the consuming app wants an additional title/collapse row. Alternatively use `<LogTerminal store={store} isCollapsed={false}/>` in your own panel. Filters, search, pause, clear, copy/save, scroll-follow and expandable record details remain available. Pause freezes presentation while the bounded store continues receiving. Clear affects the local view, not backend history or files.
 
@@ -182,6 +205,24 @@ focused F/G shortcuts use those supplied IDs and never wrap or invent membership
 The application owns catalog routes, persistence, conflicts, selection semantics,
 thumbnail resources, and exact confirmed-frame seeking.
 
+For an active training dataset, use `ImageCatalog mode="members"` with
+`items: DatasetImageItem[]`, `onRemove(id)`, and `onNavigate(id)`. Supply the
+authoritative current dataset members. `DatasetImageItem` has no inclusion flag;
+this mode renders exactly that dataset and does not keep separate membership or
+hidden-card state. The X action requests dataset removal through `onRemove`.
+The application must persist removal of the image and its associated training
+labels, invalidate derived training inputs, and supply the resulting membership.
+Failed writes remain failures, reported through `error` or the item's `error`;
+the SDK does not optimistically claim that removal succeeded. Viewing an image
+only invokes `onNavigate` and does not modify the dataset.
+
+Dataset cards retain camera/frame identity and supplied crop imagery. Their flat
+responsive grid adds columns as available width increases, with card widths bounded
+at 176 pixels. This mode has no candidate inclusion filters or Include controls.
+The application can place an explicit Undo action in the existing `actions` slot.
+Place it in a bounded flex-column parent with `min-height: 0`; the dataset catalog
+fills the remaining height and scrolls internally, without a fixed-height cap.
+
 
 `BottomLogPanel` collapses to zero height by dragging its divider down or using
 Hide logs. Its floating Logs button restores the previous size without reserving
@@ -225,3 +266,9 @@ Compose these controls with `PipelinePanel` or `PipelineWindow` and the retained
 pipeline snapshot. The application owns the dashboard tabs, trainer settings,
 train/validation split, durable history, and run selection. Chart extraction
 provenance is recorded in `provenance/charts-seed.json` at the SDK repository root.
+
+
+For a short linear workflow, pass `graphLayout="single-row"` to `PipelinePanel`.
+The default remains `two-rows`. Both layouts use measured card heights, open
+settings by default, and an initial camera scale of 1. Narrow viewports use the
+existing pan/zoom controls rather than automatically shrinking the text.

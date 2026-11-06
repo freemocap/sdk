@@ -24,6 +24,6 @@ export {SettingFilePath, type SettingFilePathProps} from './pipeline/settings/se
 
 export type {PresentedFrame, PlaybackWorkspaceHandle, PlaybackPresentationProps, TargetCropBounds, TargetCropRequest, TargetCropProvider, PresentedImage, ImageControlContext, PlaybackNavigationGroup} from './playback-presentation';
 
-export {ImageCatalog,ImageSelectionToggle,type ImageCatalogProps,type ImageCatalogItem,type ImageCatalogFilter,type ImageCatalogNavigation,type ImageSelectionToggleProps} from './browser/ImageCatalog';
+export {ImageCatalog,ImageSelectionToggle,type ImageCatalogProps,type ImageCatalogItem,type DatasetImageItem,type ImageCatalogFilter,type ImageCatalogNavigation,type ImageSelectionToggleProps} from './browser/ImageCatalog';
 export {MetricSeriesChart,type MetricSeriesChartProps} from './charts/MetricSeriesChart';
 export {SamplePreviewGrid,type SamplePreviewGridProps} from './charts/SamplePreviewGrid';

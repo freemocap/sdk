@@ -31,7 +31,7 @@ function StageSection({node,section,locked,expanded,onToggle}:{node:GraphNode;se
 }
 
 /** Core MocapSetupModal composition: run header, left ProcessingOutline, StageSection list or graph. */
-export function PipelinePanel({graph,nodePresentation,view,onViewChange,locked=false,notice,actions,operations=[],onOpenArtifact}:PipelinePanelProps) {
+export function PipelinePanel({graph,nodePresentation,view,graphLayout='two-rows',onViewChange,locked=false,notice,actions,operations=[],onOpenArtifact}:PipelinePanelProps) {
     const [focus,setFocus]=useState<GraphFocus|null>(null);
     const [active,setActive]=useState<string|null>(null);
     const [expanded,setExpanded]=useState<Record<string,boolean>>({});
@@ -61,7 +61,7 @@ export function PipelinePanel({graph,nodePresentation,view,onViewChange,locked=f
             </nav>
             <main className="mp-main">
                 {view==='graph'?<ProcessingGraphView graph={visual} sections={sections} notice={null} locked={locked}
-                    focus={focus} onFocus={setFocus} expanded={expanded} onToggle={toggle} onOpenArtifact={onOpenArtifact}/>:
+                    graphLayout={graphLayout} focus={focus} onFocus={setFocus} expanded={expanded} onToggle={toggle} onOpenArtifact={onOpenArtifact}/>:
                     <div className="mp-list settings-layout">{visual.nodes.map((node,index)=><div key={node.id} ref={element=>{
                         if(element)sectionsRef.current.set(node.id,element);else sectionsRef.current.delete(node.id);}}>
                         <StageSection node={node} section={sections[index]} locked={locked} expanded={expanded[node.id]??true} onToggle={()=>toggle(node.id)}/>

@@ -75,3 +75,14 @@ def test_record_size_bounded_and_console_record_unchanged():
         saved = queue.get_nowait()
     assert saved["message"] == "x" * 20 + "\n[truncated]"
     assert item.getMessage() == "x" * 100
+
+
+def test_session_identity_is_stable_for_reconnect_and_new_for_new_hub():
+    hub = LogHub()
+    session = hub.session_id
+    hub.handle(record("startup"))
+    for _ in range(2):
+        with hub.subscribe() as queue:
+            assert queue.get_nowait()["log_id"].startswith(session + ":")
+        assert hub.session_id == session
+    assert LogHub().session_id != session

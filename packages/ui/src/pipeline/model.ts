@@ -17,6 +17,7 @@ export interface PipelinePanelProps {
     graph: PipelineGraph;
     nodePresentation: Readonly<Record<string, PipelineStagePresentation>>;
     view: 'graph' | 'list';
+    graphLayout?: 'two-rows' | 'single-row';
     onViewChange(view: 'graph' | 'list'): void;
     locked?: boolean;
     notice?: ReactNode;

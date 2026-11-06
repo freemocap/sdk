@@ -26,10 +26,10 @@ export function roundedRoute(points:Point[],radius=16):string {
     }
     const end=points[points.length-1];return d+` L${end.x},${end.y}`;
 }
-export function stageLayout(graph:StageGraph,measurements:Partial<Record<NodeId,NodeMeasurement>>):StageLayout {
+export function stageLayout(graph:StageGraph,measurements:Partial<Record<NodeId,NodeMeasurement>>,layout:'two-rows'|'single-row'='two-rows'):StageLayout {
     const boxes=new Map<NodeId,Box>();
     if(!graph.nodes.length)return {boxes,wires:[],width:0,height:0};
-    const columns=Math.ceil(graph.nodes.length/2),margin=64,gap=80,rowGap=112;
+    const columns=layout==='single-row'?graph.nodes.length:Math.ceil(graph.nodes.length/2),margin=64,gap=80,rowGap=112;
     let y=margin;
     for(let start=0;start<graph.nodes.length;start+=columns) {
         const row=graph.nodes.slice(start,start+columns);

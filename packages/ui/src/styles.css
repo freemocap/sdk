@@ -109,6 +109,16 @@
 .sdk-image-card-body .sdk-image-selection .button {width:100%; min-height:30px; justify-content:center; padding:4px;}
 .sdk-image-card-body .sdk-image-selection .text {font-size:11px;}
 .sdk-image-empty {padding:20px 12px; color:var(--color-text-muted,#afbcbc); font-size:12px; text-align:center;}
+.sdk-image-members-grid {display:grid; grid-template-columns:repeat(auto-fill,minmax(min(100%,112px),1fr)); gap:8px; align-items:start;}
+.sdk-image-members {flex:1; min-height:0; overflow:hidden;}
+.sdk-image-members > :not(.sdk-image-catalog-scroll) {flex-shrink:0;}
+.sdk-image-members > .sdk-image-catalog-scroll {flex:1; min-height:0; max-height:none;}
+.sdk-image-members-grid > .sdk-image-card {position:relative; width:100%; max-width:176px; box-sizing:border-box;}
+.sdk-image-members .sdk-image-camera {max-width:calc(100% - 42px); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+.sdk-image-members .sdk-member-remove.button {position:absolute; top:4px; right:4px; width:28px; min-height:28px; padding:0; justify-content:center; border-radius:5px; background:var(--color-danger-idle); border:1px solid var(--color-danger);}
+.sdk-image-members .sdk-member-remove.button > p {color:var(--color-text-primary); font-size:20px; line-height:22px; margin:0;}
+.sdk-image-members .sdk-member-remove.button:hover {background:var(--color-danger-muted);}
+.sdk-image-members .sdk-member-remove.button:disabled {opacity:.5; cursor:not-allowed;}
 
 .sdk-log-visibility .button {border:1px solid var(--color-border-control,#59696d); background:var(--color-bg-secondary,#263438); color:var(--color-text-primary,#eef4f4); box-shadow:0 2px 7px #0006;}
 .sdk-image-catalog-actions {display:flex; flex-wrap:wrap; gap:6px;}

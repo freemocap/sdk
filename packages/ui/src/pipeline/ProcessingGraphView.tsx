@@ -10,6 +10,7 @@ import AnchoredInfo from '../components/ui-components/AnchoredInfo';
 
 export interface GraphFocus {id: NodeId; explain: boolean}
 interface ProcessingGraphViewProps {
+    graphLayout?: 'two-rows' | 'single-row';
     graph: StageGraph | {error: string}; sections: ProcessingSection[]; notice: ReactNode;
     locked: boolean; focus: GraphFocus | null; onFocus: (focus: GraphFocus | null) => void;
     onOpenArtifact?: (path:string)=>void;
@@ -160,13 +161,13 @@ function Explain({entries, nodeElement, canvasElement, size, onClose}: {
     </div>;
 }
 
-export default function ProcessingGraphView({graph, sections, notice, locked, focus, onFocus, onOpenArtifact, expanded, onToggle}: ProcessingGraphViewProps) {
+export default function ProcessingGraphView({graph, graphLayout='two-rows', sections, notice, locked, focus, onFocus, onOpenArtifact, expanded, onToggle}: ProcessingGraphViewProps) {
     const [measurements, setMeasurements] = useState<Partial<Record<NodeId,NodeMeasurement>>>({});
     const onMeasure = useCallback((id:NodeId,measurement:NodeMeasurement)=>setMeasurements(previous=>
         JSON.stringify(previous[id])===JSON.stringify(measurement)?previous:{...previous,[id]:measurement}),[]);
     const entryGetters = useRef(new Map<NodeId, () => ExplainEntry[]>());
     const onEntries = useCallback((id: NodeId, entries: () => ExplainEntry[]) => {entryGetters.current.set(id, entries);}, []);
-    const layout: StageLayout | null = useMemo(() => 'error' in graph ? null : stageLayout(graph, measurements), [graph, measurements]);
+    const layout: StageLayout | null = useMemo(() => 'error' in graph ? null : stageLayout(graph, measurements, graphLayout), [graph, measurements, graphLayout]);
 
     const canvasRef = useRef<HTMLDivElement>(null);
     const worldRef = useRef<HTMLDivElement>(null);

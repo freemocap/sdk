@@ -2,14 +2,7 @@ import {LogRecordSchema, type LogRecord} from '@freemocap/client';
 export {LogRecordSchema, type LogRecord} from '@freemocap/client';
 
 const MAX_ENTRIES = 10_000;
-// Only the most recent slice is persisted to localStorage. Serializing the full
-// 10k-entry in-memory buffer on every save was a ~84ms main-thread stall on the
-// save interval (seen in profiles); persisting a small tail keeps writes cheap
-// while logs still survive restarts. The full 10k stays in memory for scrollback.
-const MAX_PERSISTED_ENTRIES = 300;
-// Longer interval (was 5s) so the JSON.stringify + localStorage write happens far
-// less often. The periodic write is also deferred to requestIdleCallback so it
-// never blocks a render frame. The dirty flag still gates writes to real changes.
+// Periodic writes run at idle time; record serialization is cached incrementally.
 const AUTO_SAVE_INTERVAL_MS = 20_000;
 
 export type LogSnapshot = {
@@ -28,10 +21,9 @@ export type LogSnapshot = {
  * changed since the last snapshot. The snapshot's entries array is only
  * reallocated when new logs have arrived.
  *
- * Persists log entries to localStorage so logs survive page refreshes / app
- * restarts. A divider entry is inserted on each mount to visually separate
- * sessions. Persistence uses a dirty flag + periodic save to avoid serializing
- * the full entries array on every incoming log message.
+ * The application establishes a backend session before connecting its log stream.
+ * Persistence retains the complete bounded history for that session across page
+ * reloads. A new backend session never restores an old session's records.
  */
 export class LogStore {
     private entries: LogRecord[] = [];
@@ -59,9 +51,36 @@ export class LogStore {
 
     private readonly storageKey: string | null;
     private readonly recordIds = new Set<string>();
+    private sessionId: string | null = null;
+    private readonly serializedRecords = new WeakMap<LogRecord, string>();
+    /** Browser storage may be unavailable or full; the live buffer still works. */
+    persistenceError: string | null = null;
     constructor({storageKey = null}: {storageKey?: string | null} = {}) {
         this.storageKey = storageKey;
-        if (storageKey) this.restoreFromLocalStorage();
+
+    }
+
+    /** Call with the backend lifetime identity before subscribing to log records. */
+    beginSession(sessionId: string): void {
+        if (!sessionId.trim()) throw new Error('Log session identity must not be empty');
+        if (this.sessionId === sessionId) return;
+        // Read before clearing; constructor deliberately does not expose an old tail.
+        let saved: unknown = null;
+        if (this.storageKey) {
+            try { saved = JSON.parse(localStorage.getItem(this.storageKey) ?? 'null'); }
+            catch { /* Missing, inaccessible or invalid storage starts empty. */ }
+        }
+        this.clear();
+        this.sessionId = sessionId;
+        if (saved && typeof saved === 'object' && 'sessionId' in saved && saved.sessionId === sessionId
+            && 'entries' in saved && Array.isArray(saved.entries)) {
+            for (const item of saved.entries.slice(-MAX_ENTRIES)) {
+                const result = LogRecordSchema.safeParse(item);
+                if (result.success) this.add(result.data);
+            }
+        }
+        this.dirty = true;
+        this.persistNow();
     }
 
     start(): void {
@@ -92,6 +111,8 @@ export class LogStore {
         if (record.log_id && this.recordIds.has(record.log_id)) return;
         if (record.log_id) this.recordIds.add(record.log_id);
         this.entries.push(record);
+        // Serialize once per received record rather than all 10k on every flush.
+        if (this.storageKey) this.serializedRecords.set(record, JSON.stringify(record));
         this.version++;
 
         // Update counts
@@ -177,107 +198,25 @@ export class LogStore {
     }
 
     private persistToLocalStorage(): void {
-        if (!this.storageKey) return;
+        if (!this.storageKey || !this.sessionId || !this.dirty) return;
         try {
-            // Persist only the most recent slice — serializing all 10k entries
-            // on the main thread was the source of a periodic save-interval stall.
-            const toPersist = this.entries.length > MAX_PERSISTED_ENTRIES
-                ? this.entries.slice(this.entries.length - MAX_PERSISTED_ENTRIES)
-                : this.entries;
-            localStorage.setItem(this.storageKey, JSON.stringify(toPersist));
+            const records = this.entries.map(record => this.serializedRecords.get(record)!);
+            localStorage.setItem(this.storageKey,
+                `{"sessionId":${JSON.stringify(this.sessionId)},"entries":[${records.join(',')}]}`);
             this.dirty = false;
-        } catch {
-            // localStorage full or unavailable — silently ignore
+            this.persistenceError = null;
+        } catch (error) {
+            this.persistenceError = error instanceof Error ? error.message : String(error);
         }
-    }
-
-    private restoreFromLocalStorage(): void {
-        if (!this.storageKey) return;
-        try {
-            const raw = localStorage.getItem(this.storageKey);
-            if (!raw) return;
-
-            const parsed = JSON.parse(raw);
-            if (!Array.isArray(parsed) || parsed.length === 0) return;
-
-            // Validate each entry (schema-safe against future changes)
-            const restored: LogRecord[] = [];
-            for (const item of parsed) {
-                const result = LogRecordSchema.safeParse(item);
-                if (result.success) {
-                    restored.push(result.data);
-                }
-            }
-
-            if (restored.length === 0) return;
-
-            // Truncate to capacity, leaving room for the divider + new logs
-            if (restored.length >= MAX_ENTRIES) {
-                restored.splice(0, restored.length - MAX_ENTRIES + 1);
-            }
-
-            this.entries = restored;
-            for (const record of restored) if (record.log_id) this.recordIds.add(record.log_id);
-
-            // Recalculate aggregate state from restored entries
-            this.countsByLevel = {};
-            this.hasErrors = false;
-            for (const entry of this.entries) {
-                if (entry.type === 'divider') continue;
-                const lvl = entry.levelname;
-                this.countsByLevel[lvl] = (this.countsByLevel[lvl] || 0) + 1;
-                if (lvl === 'ERROR' || lvl === 'CRITICAL') {
-                    this.hasErrors = true;
-                }
-            }
-
-            this.addDivider();
-            this.version++;
-        } catch {
-            // Corrupted data — start fresh
-        }
-    }
-
-    private addDivider(): void {
-        const now = new Date();
-        const divider: LogRecord = {
-            name: '',
-            msg: '',
-            args: [],
-            levelname: 'DIVIDER',
-            levelno: -1,
-            pathname: '',
-            filename: '',
-            module: '',
-            exc_info: null,
-            exc_text: null,
-            stack_info: null,
-            lineno: 0,
-            funcName: '',
-            created: now.getTime() / 1000,
-            msecs: now.getMilliseconds(),
-            relativeCreated: 0,
-            thread: 0,
-            threadName: '',
-            processName: '',
-            process: 0,
-            delta_t: '',
-            message: '────── App restarted ──────',
-            asctime: now.toLocaleString(),
-            formatted_message: '',
-            type: 'divider',
-            source: 'system',
-        };
-        this.entries.push(divider);
-        this.dirty = true;
     }
 
     private clearLocalStorage(): void {
         if (!this.storageKey) return;
         try {
             localStorage.removeItem(this.storageKey);
-        } catch {
-            // ignore
+            this.persistenceError = null;
+        } catch (error) {
+            this.persistenceError = error instanceof Error ? error.message : String(error);
         }
     }
 }

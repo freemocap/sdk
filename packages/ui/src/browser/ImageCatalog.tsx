@@ -25,19 +25,26 @@ export interface ImageCatalogNavigation {
     mode:'included'|'generated';onModeChange:(mode:'included'|'generated')=>void;
     previousId?:string;nextId?:string;pending?:boolean;
 }
-export interface ImageCatalogProps {
+export type DatasetImageItem=Omit<ImageCatalogItem,'included'>;
+interface ImageCatalogBaseProps {
     actions?:ReactNode;
     onIncludeAll?:()=>void;includeAllPending?:boolean;includeAllDisabled?:boolean;
-    items:readonly ImageCatalogItem[];activeId?:string;onNavigate:(id:string)=>void;onToggle:(id:string)=>void;
+    activeId?:string;onNavigate:(id:string)=>void;
     pending?:boolean;error?:string;onFilterChange?:(filter:ImageCatalogFilter)=>void;navigation?:ImageCatalogNavigation;
 }
+export type ImageCatalogProps=ImageCatalogBaseProps & (
+    {mode?:'selection';items:readonly ImageCatalogItem[];onToggle:(id:string)=>void} |
+    {mode:'members';items:readonly DatasetImageItem[];onRemove:(id:string)=>void}
+);
 function CatalogThumbnail({src,label}:{src:string|null;label:string}) {
     const [failed,setFailed]=useState<string|null>(null);
     return src&&src!==failed?<img src={src} alt={label} loading="lazy" decoding="async" onError={()=>setFailed(src)}/>
         :<span className="sdk-image-thumbnail-unavailable">Target unavailable</span>;
 }
-export function ImageCatalog({items,activeId,onNavigate,onToggle,pending,error,onFilterChange,navigation,actions,onIncludeAll,includeAllPending,includeAllDisabled}:ImageCatalogProps) {
+export function ImageCatalog(props:ImageCatalogProps) {
     const [filter,setFilter]=useState<ImageCatalogFilter>({inclusion:'all',camera:null});
+    if(props.mode==='members')return <MemberImageCatalog {...props}/>;
+    const {items,activeId,onNavigate,onToggle,pending,error,onFilterChange,navigation,actions,onIncludeAll,includeAllPending,includeAllDisabled}=props;
     const change=(patch:Partial<ImageCatalogFilter>)=>{const next={...filter,...patch};setFilter(next);onFilterChange?.(next);};
     const included=items.filter(item=>item.included).length;
     const cameras=[...new Set(items.map(item=>item.camera))];
@@ -100,6 +107,36 @@ export function ImageCatalog({items,activeId,onNavigate,onToggle,pending,error,o
                     </article>)}
                 </div>
             </section>)}
+        </div>
+    </section>;
+}
+
+/** Membership is application-owned; viewing a card never changes the dataset. */
+function MemberImageCatalog({items,activeId,onNavigate,onRemove,pending,error,actions}:Extract<ImageCatalogProps,{mode:'members'}>){
+    return <section className="sdk-image-catalog sdk-image-members" aria-label="Training images">
+        <SubactionHeader text="Training images"/>
+        <div className="sdk-image-catalog-counts"><strong>{items.length}<small> images</small></strong></div>
+        {actions&&<div className="sdk-image-catalog-actions">{actions}</div>}
+        {error&&<div className="sdk-image-save-error" role="alert">{error}</div>}
+        <div className="sdk-image-catalog-scroll">
+            {!items.length&&<div className="sdk-image-empty">No images in the training set</div>}
+            <div className="sdk-image-members-grid">{items.map(item=><article key={item.id}
+                className={`sdk-image-card ${activeId===item.id?'active':''}`} data-image-id={item.id}
+                aria-label={`${item.camera} · ${item.groupLabel}`}>
+                <button className="sdk-image-thumbnail" aria-label={`Show ${item.label}`} aria-current={activeId===item.id?'true':undefined}
+                    disabled={pending} onClick={()=>onNavigate(item.id)}>
+                    <CatalogThumbnail src={item.thumbnailUrl} label={item.label}/>
+                    <span className="sdk-image-camera">{item.camera}</span>
+                </button>
+                <ButtonSm text="×" buttonType="secondary btn-danger" className="sdk-member-remove"
+                    title={`Remove ${item.label} from training set`} disabled={pending||item.pending}
+                    ariaBusy={!!item.pending} onClick={()=>onRemove(item.id)}/>
+                <div className="sdk-image-card-body"><strong>{item.camera}</strong>
+                    <small>{item.sourceFrameNumber===undefined?item.groupLabel:`Frame ${item.sourceFrameNumber}`}</small>
+                    {item.detail&&<small>{item.detail}</small>}
+                    {item.error&&<span className="sdk-image-save-error" role="alert">{item.error}</span>}
+                </div>
+            </article>)}</div>
         </div>
     </section>;
 }
