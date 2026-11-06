@@ -572,3 +572,14 @@
 .settings-layout-stacked .setting-row-control {
   width: 100%;
 }
+
+/* Native selects retain their keyboard/menu behavior; the closed value wraps. */
+.setting-select-wrapped .setting-select-value {width:100%;box-sizing:border-box;padding:8px 30px 8px 11px;background:var(--color-surface-control);border:1px solid var(--color-border-control);border-radius:6px;box-shadow:var(--shadow-raised-lip);color:var(--color-text-primary);font-size:12px;font-weight:500;white-space:normal;overflow-wrap:anywhere;}
+.setting-select-wrapped select {position:absolute;inset:0;height:100%;opacity:0;}
+.setting-select-wrapped:has(select:focus-visible) {outline:2px solid var(--color-info-strong);outline-offset:2px;border-radius:6px;}
+.setting-select-wrapped:has(select:disabled) .setting-select-value {color:var(--color-text-disabled);}
+.setting-select-wrapped:hover .setting-select-value {border-color:var(--color-text-disabled);}
+
+.sdk-setting-file-path {min-height:36px;width:100%;min-width:0;flex-wrap:wrap;}
+.sdk-setting-file-path-value {flex:1 1 120px;min-width:0;font-family:var(--font-mono);white-space:normal;overflow-wrap:anywhere;user-select:text;color:var(--color-text-primary);}
+.sdk-setting-file-path > button,.sdk-setting-file-path > .icon {flex-shrink:0;}

@@ -24,7 +24,8 @@ interface SettingSelectInputProps<Value extends string> {
 export default function SettingSelectInput<Value extends string>(
     {label, value, options, onChange, disabled = false}: SettingSelectInputProps<Value>,
 ) {
-    return <span className="setting-select-input">
+    return <span className="setting-select-input setting-select-wrapped">
+        <span className="setting-select-value" aria-hidden="true">{options.find(option=>option.value===value)?.label??value}</span>
         <select aria-label={label} value={value} disabled={disabled}
             onChange={event => onChange(event.target.value as Value)}>
             {options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}

@@ -40,9 +40,18 @@ for actual validation/load/save errors, which remain visible as an alert.
 `subtitle`, `onClose` and `children`. It retains Core's processing-window chrome
 and uses native modal focus containment. Info popovers stay in the modal's DOM
 ownership and browser top layer. The panel includes Core's left stage outline
-in both views. The graph starts in two rows of compact cards at 80–100% according to the available width;
-selecting a stage expands its shared settings. Pan/zoom and explicit `Fit all`
-remain available; changing configuration does not reset a user-controlled camera.
+in both views. The graph starts in two rows at 100%, with every stage's settings
+open. Independent chevrons expand/collapse settings without changing the camera,
+including after explicit focus or `Fit all`. Expansion state survives list/graph
+switches. Titles, ports and select values wrap; measured ports keep connections
+attached as heights change. Gutter routes use tangent rounded corners. Pan/zoom
+and explicit `Fit all` remain available for content beyond the viewport.
+The internal `reusable` availability is not displayed as a badge.
+
+`SettingFilePath({label, path, onBrowse, onClear?, disabled?})` adapts Core's
+calibration picker to any file. It displays the full wrapped, selectable path.
+The host supplies native browsing, cancellation, validation and errors; the SDK
+has no Electron/Tauri dependency and never changes the path itself.
 
 `SidebarProcessingAction({text, onClick, disabled?, description?, iconClass?})`
 exposes Core's `ProcessMocapPanel` full-width accent action, with its existing
@@ -54,6 +63,7 @@ Omit `description` when the application keeps explanatory copy behind info.
 | `layout/content/SidePanelContent.tsx` → `components/control-panels/recording-info-panel/ProcessMocapPanel.tsx` → `ButtonSm`, `styles/button-sm.css`, `styles/icons.css` | `SidebarProcessingAction` |
 | `components/mocap-setup/mocap-setup-modal.tsx`, `mocap-processing.css` | `PipelineWindow`, `PipelinePanel` header/body |
 | `components/mocap-setup/processing-outline.tsx`, `stage-section.tsx` | Shared left outline and list sections |
+| `components/common/CalibrationTomlPicker.tsx` | `SettingFilePath` with host-provided browsing |
 | `components/common/settings-layout/` | `SettingRow`, select, toggle, headings, summary chips and settings CSS |
 | `components/ui-components/ValueSelector.tsx`, `AnchoredInfo.tsx` | Numeric editor and help popovers |
 | `components/processing-graph/ProcessingGraphView.tsx`, `processing-graph.css` | Camera, focus, typed ports, setting callouts and graph styling |

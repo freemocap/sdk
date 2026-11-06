@@ -104,7 +104,12 @@
     {
       "path": "freemocap-ui/src/components/mocap-setup/processing-outline.tsx",
       "sha256": "b84ef3dd1661c4a731be3e1f7d88bed21f4650a881924280389ee31888eecc98"
+    },
+    {
+      "path": "freemocap-ui/src/components/common/CalibrationTomlPicker.tsx",
+      "sha256": "b365d9907ef454ee98e6699298bc2605dceff556a982338c051a68d8b13b183a"
     }
   ],
-  "adaptation": "Preserve Core graph camera, pointer, measured cards, typed ports and explanation machinery. Inject application semantics/settings, generalize layout from mocap IDs to ordered workflow. Reuse actual MocapSetupModal header/body, ProcessingOutline and StageSection composition plus SettingRow/Select/Toggle/ValueSelector/AnchoredInfo and complete CSS. Core unchanged. Final user layout amendment: two rows of compact250px cards at80\u2013100percent default; focused shared settings360px; explicit FitAll overview only. SidebarProcessingAction retains actual ProcessMocapPanel button/icon/accent/fullwidth structure with44px target. Native dialog adds focus containment/return; floating info portal follows owning dialog; ValueSelector adds optional accessible label."
+  "adaptation": "Preserve Core graph camera, pointer, measured cards, typed ports and explanation machinery. Inject application semantics/settings, generalize layout from mocap IDs to ordered workflow. Reuse actual MocapSetupModal header/body, ProcessingOutline and StageSection composition plus SettingRow/Select/Toggle/ValueSelector/AnchoredInfo and complete CSS. Core unchanged. Current layout: two rows of 360px measured cards at100percent default, all settings independently expanded; explicit FitAll overview only. SidebarProcessingAction retains actual ProcessMocapPanel button/icon/accent/fullwidth structure with44px target. Native dialog adds focus containment/return; floating info portal follows owning dialog; ValueSelector adds optional accessible label.",
+  "disclosure_revision": "Shared expansion state across views, all expanded initially, camera-independent disclosure, wrapped measured headers/ports, rounded gutter routes, host-injected file picker with full path; native select wrapped closed value."
 }

@@ -1,10 +1,10 @@
 // Extracted from Core's Mocap processing graph: app-defined stages carry typed
 // data sockets, shared settings, retained progress and artifact references.
 // The magnifier zooms onto one node; the info button zooms onto it, covers the graph and points at each part.
-import {type PointerEvent, type ReactNode, type WheelEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import {type PointerEvent, type ReactNode, type WheelEvent, useCallback, useId, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {useExplainScope, useExplainTarget, type ExplainEntry} from './explain-registry';
 import {type DataKey, type GraphNode, type NodeId, type NodeState, type StageGraph, type ProcessingSection, type PortData} from './model';
-import {type Box, NODE_WIDTH, ROWS, type StageLayout, stageLayout} from './stage-layout';
+import {type Box, type NodeMeasurement, ROWS, type StageLayout, stageLayout} from './stage-layout';
 import {OperationRow} from './OperationRow';
 import AnchoredInfo from '../components/ui-components/AnchoredInfo';
 
@@ -13,50 +13,61 @@ interface ProcessingGraphViewProps {
     graph: StageGraph | {error: string}; sections: ProcessingSection[]; notice: ReactNode;
     locked: boolean; focus: GraphFocus | null; onFocus: (focus: GraphFocus | null) => void;
     onOpenArtifact?: (path:string)=>void;
+    expanded:Readonly<Record<string,boolean>>;onToggle:(id:string)=>void;
 }
 interface Camera {x:number;y:number;z:number}
 const MIN_ZOOM=0.05, MAX_ZOOM=2.2, FIT_MARGIN=24;
 const stateClass=(state:NodeState):string=>state.replaceAll(' ','-');
 
-function Port({data,direction}: {data:PortData;direction:'in'|'out'}) {
+function Port({data,direction,portKey}: {data:PortData;direction:'in'|'out';portKey:string}) {
     const explain=useExplainTarget(`${direction}:${data.name}`,data.name,data.description,direction==='in'?'left':'right');
-    return <div ref={explain} className={`pg-port ${direction}`} style={{height:ROWS.port}} title={data.description}>
+    return <div ref={explain} className={`pg-port ${direction}`} data-port-key={portKey} style={{minHeight:ROWS.port}} title={data.description}>
         <i className="pg-socket" style={{background:data.colour}}/>
         <span className="pg-port-name" style={direction==='out'?{color:data.colour}:undefined}>{data.name}{data.detail && <small> {data.detail}</small>}</span>
     </div>;
 }
-function Node({node,section,box,focused,explaining,locked,onMeasure,onFocus,onEntries,data,onOpenArtifact}: {
+function Node({node,section,box,focused,explaining,locked,onMeasure,onFocus,onEntries,data,onOpenArtifact,expanded,onToggle}: {
     node:GraphNode;section:ProcessingSection;box:Box;focused:boolean;explaining:boolean;locked:boolean;
-    onMeasure:(id:NodeId,height:number)=>void;onFocus:(focus:GraphFocus|null)=>void;
+    expanded:boolean;onToggle:()=>void;onMeasure:(id:NodeId,measurement:NodeMeasurement)=>void;onFocus:(focus:GraphFocus|null)=>void;
     onEntries:(id:NodeId,entries:()=>ExplainEntry[])=>void;data:Record<DataKey,PortData>;onOpenArtifact?:(path:string)=>void;
 }) {
     const {entries,Scope}=useExplainScope();
+    const bodyId=useId();
     useEffect(()=>onEntries(node.id,entries),[node.id,entries,onEntries]);
     const element=useRef<HTMLDivElement>(null);
     useLayoutEffect(()=>{
         const current=element.current;if(!current)return;
-        const measure=()=>onMeasure(node.id,current.offsetHeight);
-        const observer=new ResizeObserver(measure);observer.observe(current);measure();
+        const measure=()=>{
+            const ports:Record<string,number>={};
+            // offsetTop is in layout pixels, independent of the animated camera transform.
+            current.querySelectorAll<HTMLElement>('[data-port-key]').forEach(port=>{
+                let y=port.offsetHeight/2;let element:HTMLElement|null=port;
+                while(element && element!==current){y+=element.offsetTop;element=element.offsetParent as HTMLElement|null;}
+                ports[port.dataset.portKey!]=y;
+            });
+            onMeasure(node.id,{height:current.offsetHeight,ports});
+        };
+        const observer=new ResizeObserver(measure);observer.observe(current);current.querySelectorAll('.pg-node-head, .pg-port').forEach(item=>observer.observe(item));measure();
         return ()=>observer.disconnect();
     },[node.id,onMeasure]);
     return <div ref={element} role="group" aria-label={section.title} data-stage-id={node.id}
         className={`pg-node ${stateClass(node.state)}${focused?' focused':''}${explaining?' explaining':''}`}
         style={{left:box.x,top:box.y,width:box.w}}><Scope>
-        <Header node={node} section={section} focused={focused} explaining={explaining} onFocus={onFocus}/>
+        <Header node={node} section={section} focused={focused} explaining={explaining} onFocus={onFocus} expanded={expanded} onToggle={onToggle} bodyId={bodyId}/>
         <div className="pg-ports" style={{paddingTop:ROWS.portsPad,paddingBottom:ROWS.portsPad}}>
-            {node.outputs.map(key=><Port key={key} data={data[key]} direction="out"/>)}
-            {node.inputs.map(key=><Port key={key} data={data[key]} direction="in"/>)}
+            {node.outputs.map(key=><Port key={key} portKey={key} data={data[key]} direction="out"/>)}
+            {node.inputs.map(key=><Port key={key} portKey={key} data={data[key]} direction="in"/>)}
         </div>
-        <div className="sdk-pipeline-stage-status"><span className="pg-pill">{node.presentation.availability}</span><AnchoredInfo title={`${section.title} availability`} text={<>{node.presentation.reason}{node.presentation.artifacts?.map(path=><p key={path}>{path}</p>)}</>}/>{node.presentation.summary}</div>
-        {focused ? <div className="pg-node-settings settings-layout" inert={locked}>{section.content}</div>
-            : <button type="button" className="sdk-stage-settings-button" onClick={()=>onFocus({id:node.id,explain:false})}>Open stage settings</button>}
+        <div className="sdk-pipeline-stage-status">{node.presentation.availability!=='reusable' && <span className="pg-pill">{node.presentation.availability}</span>}<AnchoredInfo title={`${section.title} availability`} text={<>{node.presentation.reason}{node.presentation.artifacts?.map(path=><p key={path}>{path}</p>)}</>}/>{node.presentation.summary}</div>
+        <div id={bodyId} className="pg-node-settings settings-layout" hidden={!expanded} inert={locked}>{section.content}</div>
         {node.operation && <div className="sdk-pipeline-operation"><OperationRow operation={node.operation} title={node.operation.label}/></div>}
         </Scope></div>;
 }
-function Header({node,section,focused,explaining,onFocus}:{node:GraphNode;section:ProcessingSection;focused:boolean;explaining:boolean;onFocus:(focus:GraphFocus|null)=>void}) {
+function Header({node,section,focused,explaining,onFocus,expanded,onToggle,bodyId}:{expanded:boolean;onToggle:()=>void;bodyId:string;node:GraphNode;section:ProcessingSection;focused:boolean;explaining:boolean;onFocus:(focus:GraphFocus|null)=>void}) {
     const explain=useExplainTarget('stage',section.title,node.presentation.description,'left');
     const kind=node.presentation.kind==='source'?'source':node.presentation.kind==='publication'?'sink':'stage';
-    return <div ref={explain} className={`pg-node-head ${kind}`} style={{height:ROWS.head}}>
+    return <div ref={explain} className={`pg-node-head ${kind}`} style={{minHeight:ROWS.head}}>
+        <button type="button" className="pg-head-button sdk-stage-disclosure" aria-label={`Toggle ${section.title} settings`} aria-expanded={expanded} aria-controls={bodyId} onClick={event=>{event.stopPropagation();onToggle();}}><span className="settings-section-chevron"/></button>
         <span className="pg-node-title" title={section.title}><small>{section.number}</small>{section.title}</span>
         <button type="button" className={`pg-head-button${explaining?' on':''}`} aria-label={`Explain ${section.title}`} aria-pressed={explaining}
             onClick={()=>onFocus(explaining?null:{id:node.id,explain:true})}>
@@ -102,7 +113,7 @@ function Explain({entries, nodeElement, canvasElement, size, onClose}: {
     const origin = canvasElement.getBoundingClientRect();
     const nodeRect = nodeElement.getBoundingClientRect();
     const node = new DOMRect(nodeRect.left - origin.left, nodeRect.top - origin.top, nodeRect.width, nodeRect.height);
-    const targets = entries.filter(entry => nodeElement.contains(entry.element)).map(entry => ({entry, rect: entry.element.getBoundingClientRect()}));
+    const targets = entries.filter(entry => nodeElement.contains(entry.element) && entry.element.getClientRects().length>0).map(entry => ({entry, rect: entry.element.getBoundingClientRect()}));
     const callout = (entry: ExplainEntry, rect: DOMRect, side: 'left' | 'right'): Callout => ({key: entry.key, title: entry.title, text: entry.text, side,
         tx: side === 'left' ? rect.left - origin.left - (entry.key.startsWith('in:') ? 0 : 2) : rect.right - origin.left + (entry.key.startsWith('out:') ? 0 : 2),
         ty: rect.top - origin.top + Math.min(rect.height, 40) / 2});
@@ -149,14 +160,16 @@ function Explain({entries, nodeElement, canvasElement, size, onClose}: {
     </div>;
 }
 
-export default function ProcessingGraphView({graph, sections, notice, locked, focus, onFocus, onOpenArtifact}: ProcessingGraphViewProps) {
-    const [heights, setHeights] = useState<Partial<Record<NodeId, number>>>({});
-    const onMeasure = useCallback((id: NodeId, height: number) => setHeights(previous => previous[id] === height ? previous : {...previous, [id]: height}), []);
+export default function ProcessingGraphView({graph, sections, notice, locked, focus, onFocus, onOpenArtifact, expanded, onToggle}: ProcessingGraphViewProps) {
+    const [measurements, setMeasurements] = useState<Partial<Record<NodeId,NodeMeasurement>>>({});
+    const onMeasure = useCallback((id:NodeId,measurement:NodeMeasurement)=>setMeasurements(previous=>
+        JSON.stringify(previous[id])===JSON.stringify(measurement)?previous:{...previous,[id]:measurement}),[]);
     const entryGetters = useRef(new Map<NodeId, () => ExplainEntry[]>());
     const onEntries = useCallback((id: NodeId, entries: () => ExplainEntry[]) => {entryGetters.current.set(id, entries);}, []);
-    const layout: StageLayout | null = useMemo(() => 'error' in graph ? null : stageLayout(graph, heights, focus?.id), [graph, heights, focus?.id]);
+    const layout: StageLayout | null = useMemo(() => 'error' in graph ? null : stageLayout(graph, measurements), [graph, measurements]);
 
     const canvasRef = useRef<HTMLDivElement>(null);
+    const worldRef = useRef<HTMLDivElement>(null);
     const [size, setSize] = useState({w: 0, h: 0});
     useLayoutEffect(() => {
         const canvas = canvasRef.current;
@@ -178,7 +191,7 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
     const target: Camera = !layout || !size.w ? {x: 0, y: 0, z: 1}
         : focus && layout.boxes.has(focus.id) ? fitBox(layout.boxes.get(focus.id)!, focus.explain ? 0.42 : 1, MAX_ZOOM)
             : overview ? fitBox({x: 0, y: 0, w: layout.width, h: layout.height}, 1, 1)
-                : {x: 0, y: 0, z: Math.max(0.8, Math.min(1, size.w / layout.width))};
+                : {x: 0, y: 0, z: 1};
     // A focus change hands the camera back to the target and animates there; the reader's own panning and zooming is immediate.
     const previousFocus = useRef(focus);
     useEffect(() => {
@@ -191,6 +204,13 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
         return () => clearTimeout(timer);
     }, [focus?.id, focus?.explain]);
     const cam = camera ?? target;
+    const toggleSettings=(id:string)=>{
+        // Freeze the current camera before measured card bounds change, including
+        // when the preceding explicit action was focus or Fit all.
+        const transform=animate&&worldRef.current?new DOMMatrixReadOnly(getComputedStyle(worldRef.current).transform):null;
+        setCamera(transform?{z:transform.a,x:-transform.e/transform.a,y:-transform.f/transform.a}:{...cam});
+        setAnimate(false);onToggle(id);
+    };
     const zoomAbout = (z: number, px: number, py: number): void => {
         const next = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
         setCamera({z: next, x: cam.x + px / cam.z - px / next, y: cam.y + py / cam.z - py / next});
@@ -235,17 +255,17 @@ export default function ProcessingGraphView({graph, sections, notice, locked, fo
         tabIndex={0} onKeyDown={event => {if (event.key === 'Escape' && focus) {event.preventDefault();event.stopPropagation();onFocus(null);}}} aria-label="Processing graph. Drag to pan, scroll to zoom.">
         {'error' in graph && <p role="alert" className="pg-notice warn">{graph.error}</p>}
         {notice}
-        {layout && 'nodes' in graph && size.w > 0 && <div className={`pg-world${animate ? ' animate' : ''}`}
+        {layout && 'nodes' in graph && size.w > 0 && <div ref={worldRef} className={`pg-world${animate ? ' animate' : ''}`}
             style={{width: layout.width, height: layout.height, transform: `scale(${cam.z}) translate(${-cam.x}px, ${-cam.y}px)`}}>
             <svg className="pg-wires" width={layout.width} height={layout.height} aria-hidden="true">
-                {graph.wires.map(wire => <path key={wire.id} d={layout.wires.find(item => item.id === wire.id)!.d}
+                {graph.wires.map(wire => <path key={wire.id} data-wire-id={wire.id} d={layout.wires.find(item => item.id === wire.id)!.d}
                     className={`pg-wire${wire.active ? '' : ' quiet'}${graph.nodes.find(node => node.id === wire.target)!.state === 'running' ? ' flow' : ''}`}
                     style={{stroke: graph.data[wire.data].colour}}/>)}
             </svg>
             {focus?.explain && <div className="pg-explain-cover"/>}
             {graph.nodes.map(node => <div key={node.id} ref={element => {if (element) nodeElements.current.set(node.id, element.firstElementChild as HTMLElement);}}>
                 <Node node={node} section={byId.get(node.id)!} box={layout.boxes.get(node.id)!} focused={focus?.id === node.id}
-                    explaining={focus?.id === node.id && focus.explain} locked={locked} onMeasure={onMeasure} onFocus={onFocus} onEntries={onEntries} data={graph.data} onOpenArtifact={onOpenArtifact}/>
+                    expanded={expanded[node.id]??true} onToggle={()=>toggleSettings(node.id)} explaining={focus?.id === node.id && focus.explain} locked={locked} onMeasure={onMeasure} onFocus={onFocus} onEntries={onEntries} data={graph.data} onOpenArtifact={onOpenArtifact}/>
             </div>)}
         </div>}
         {focus?.explain && explainReady && canvasRef.current && nodeElements.current.get(focus.id) &&

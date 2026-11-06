@@ -10,10 +10,7 @@
 .sdk-pipeline-panel .sdk-stage-publication {border-left-color:var(--graph-ok);}
 .sdk-pipeline-stage-status {display:flex;align-items:center;gap:6px;padding:7px 12px;}
 .sdk-pipeline-panel .pg-node.manual,.sdk-pipeline-panel .pg-node.unimplemented {border-style:dashed;}
-.sdk-pipeline-panel .pg-port-name {overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .sdk-pipeline-panel button:focus-visible {outline:2px solid var(--color-info-strong);outline-offset:2px;}
-.sdk-stage-settings-button {font:inherit;font-size:12px;padding:7px 10px;margin:0 12px 12px;background:var(--color-surface-control);border:1px solid var(--color-border-control);color:var(--color-text-primary);border-radius:5px;cursor:pointer;}
-.sdk-stage-settings-button:hover {background:var(--color-surface-hover);}
 .sdk-explain-close {position:absolute;right:12px;top:12px;z-index:6;pointer-events:auto;font:inherit;padding:6px 10px;background:var(--color-surface-control);border:1px solid var(--color-border-control);color:var(--color-text-primary);border-radius:5px;cursor:pointer;}
 .sdk-pipeline-panel .pg-callout {max-height:calc(100% - 24px);overflow:auto;}
 .sdk-pipeline-dialog.mocap-processing {position:fixed;inset:16px;margin:auto;transform:none;padding:0;}
@@ -24,3 +21,20 @@
 .sdk-sidebar-processing-action .button.sm:focus-visible {outline:2px solid var(--color-info-strong);outline-offset:2px;}
 .sdk-sidebar-processing-action .button.sm:disabled {opacity:.5;cursor:not-allowed;}
 .sdk-sidebar-action-description {margin:4px 2px 0;color:var(--color-text-muted);font-size:12px;line-height:1.4;}
+.sdk-pipeline-panel .pg-node-head {height:auto;padding:8px 10px;align-items:center;}
+.sdk-pipeline-panel .pg-node-title,.sdk-pipeline-panel .pg-port-name,.sdk-pipeline-panel .pg-pill,.sdk-pipeline-panel .pg-bar-text,.sdk-pipeline-panel .settings-summary-chip {white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;height:auto;}
+.sdk-pipeline-panel .pg-node-title {line-height:1.4;}
+.sdk-pipeline-panel .pg-head-button {flex-shrink:0;}
+.sdk-pipeline-panel .pg-port {padding-top:4px;padding-bottom:4px;}
+.sdk-pipeline-panel .pg-port-name {min-width:0;}
+.sdk-pipeline-panel .pg-node-settings[hidden],.sdk-pipeline-panel .settings-section-body[hidden] {display:none;}
+.sdk-pipeline-panel .sdk-stage-disclosure {display:flex;align-items:center;justify-content:center;}
+.sdk-pipeline-panel .sdk-stage-disclosure[aria-expanded="true"] .settings-section-chevron {transform:rotate(45deg);}
+.sdk-pipeline-panel .pg-callout-text {-webkit-line-clamp:unset;line-clamp:unset;display:block;overflow:visible;overflow-wrap:anywhere;}
+.sdk-pipeline-panel .setting-row-label,.sdk-pipeline-panel .setting-row-control,.sdk-pipeline-panel .settings-section-title {overflow-wrap:anywhere;white-space:normal;}
+.sdk-pipeline-panel .settings-section-summary {overflow:visible;flex-wrap:wrap;}
+.sdk-pipeline-stage-status {flex-wrap:wrap;}
+.sdk-pipeline-panel .pg-node-settings .setting-row {grid-template-columns:minmax(0,1fr) minmax(0,170px);}
+
+.sdk-pipeline-panel .settings-section-title {flex:1;min-width:0;text-align:left;}
+.sdk-pipeline-panel .mp-section-title {min-width:0;}

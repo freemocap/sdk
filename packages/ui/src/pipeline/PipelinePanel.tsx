@@ -11,17 +11,17 @@ export function PipelineSetting({label,description,children}:{id:string;label:st
 }
 
 // Core StageSection, with application-owned settings and status instead of Mocap toggles.
-function StageSection({node,section,locked}:{node:GraphNode;section:ProcessingSection;locked:boolean}) {
-    const [expanded,setExpanded]=useState(true);const bodyId=useId();
+function StageSection({node,section,locked,expanded,onToggle}:{node:GraphNode;section:ProcessingSection;locked:boolean;expanded:boolean;onToggle:()=>void}) {
+    const bodyId=useId();
     return <section className={`settings-section mp-section sdk-stage-${node.presentation.kind}`} aria-label={section.title} data-stage-id={node.id}>
         <div className="settings-section-header mp-section-header">
-            <button type="button" className="mp-section-title" aria-expanded={expanded} aria-controls={bodyId} onClick={()=>setExpanded(!expanded)}>
+            <button type="button" className="mp-section-title" aria-label={`Toggle ${section.title} settings`} aria-expanded={expanded} aria-controls={bodyId} onClick={onToggle}>
                 <span className="settings-section-chevron"/><span className="mp-outline-number">{section.number}</span>
                 <h2 className="settings-section-title">{section.title}</h2>
             </button>
             <AnchoredInfo title={section.title} text={<>{node.presentation.description}<p>{node.presentation.reason}</p>
                 {node.presentation.artifacts?.map(path=><p key={path}>{path}</p>)}</>}/>
-            <span className="settings-section-summary"><span className="settings-summary-chip">{node.presentation.availability}</span>{node.presentation.summary}</span>
+            <span className="settings-section-summary">{node.presentation.availability!=='reusable' && <span className="settings-summary-chip">{node.presentation.availability}</span>}{node.presentation.summary}</span>
         </div>
         <div id={bodyId} className="settings-section-body" hidden={!expanded} inert={locked}>
             {section.content}
@@ -34,6 +34,8 @@ function StageSection({node,section,locked}:{node:GraphNode;section:ProcessingSe
 export function PipelinePanel({graph,nodePresentation,view,onViewChange,locked=false,notice,actions,operations=[],onOpenArtifact}:PipelinePanelProps) {
     const [focus,setFocus]=useState<GraphFocus|null>(null);
     const [active,setActive]=useState<string|null>(null);
+    const [expanded,setExpanded]=useState<Record<string,boolean>>({});
+    const toggle=(id:string)=>setExpanded(previous=>({...previous,[id]:!(previous[id]??true)}));
     const sectionsRef=useRef(new Map<string,HTMLDivElement>());
     let visual;try {visual=buildStageGraph(graph,nodePresentation,operations);} catch(error) {
         return <p role="alert">{error instanceof Error ? error.message : String(error)}</p>;
@@ -59,10 +61,10 @@ export function PipelinePanel({graph,nodePresentation,view,onViewChange,locked=f
             </nav>
             <main className="mp-main">
                 {view==='graph'?<ProcessingGraphView graph={visual} sections={sections} notice={null} locked={locked}
-                    focus={focus} onFocus={setFocus} onOpenArtifact={onOpenArtifact}/>:
+                    focus={focus} onFocus={setFocus} expanded={expanded} onToggle={toggle} onOpenArtifact={onOpenArtifact}/>:
                     <div className="mp-list settings-layout">{visual.nodes.map((node,index)=><div key={node.id} ref={element=>{
                         if(element)sectionsRef.current.set(node.id,element);else sectionsRef.current.delete(node.id);}}>
-                        <StageSection node={node} section={sections[index]} locked={locked}/>
+                        <StageSection node={node} section={sections[index]} locked={locked} expanded={expanded[node.id]??true} onToggle={()=>toggle(node.id)}/>
                     </div>)}</div>}
             </main>
         </div>

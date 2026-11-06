@@ -17,7 +17,7 @@ test('manual and unimplemented stages retain declared edges without pretending t
     const {graph,metadata}=fixture();const view=buildStageGraph(graph,metadata);
     assert.equal(view.nodes[5].state,'manual');assert.equal(view.nodes[6].state,'unimplemented');
     assert.equal(view.wires.length,6);assert.ok(view.nodes.every(n=>n.operation===undefined));
-    const layout=stageLayout(view,{review:800});
+    const layout=stageLayout(view,{review:{height:800,ports:{}}});
     for(const node of view.nodes) assert.ok(layout.boxes.get(node.id));
     const wrap=view.wires[2], path=layout.wires[2].d;
     const source=layout.boxes.get(wrap.source)!,target=layout.boxes.get(wrap.target)!;
@@ -36,4 +36,17 @@ test('malformed dependencies cannot render a misleading valid workflow',()=>{
 test('missing metadata and required bindings are reported instead of disappearing',()=>{
     const {graph,metadata}=fixture();delete metadata.pose;assert.throws(()=>buildStageGraph(graph,metadata),/Missing presentation/);
     metadata.pose=meta;graph.definition.edges.pop();assert.throws(()=>buildStageGraph(graph,metadata),/unbound input/);
+});
+
+test('wrapped measurements drive wire anchors and separate expanded rows',()=>{
+    const {graph,metadata}=fixture();const view=buildStageGraph(graph,metadata);
+    const source=view.nodes[3],target=view.nodes[4];
+    const layout=stageLayout(view,{pose:{height:900,ports:{[source.outputs[0]]:143}},candidates:{height:400,ports:{[target.inputs[0]]:187}}});
+    const from=layout.boxes.get('pose')!,to=layout.boxes.get('candidates')!;
+    assert.ok(to.y>from.y+from.h);
+    assert.ok([...layout.boxes.values()].every(box=>box.w===360));
+    const path=layout.wires[3].d;
+    assert.ok(path.startsWith(`M${from.x+from.w},${from.y+143}`));
+    assert.ok(path.endsWith(`${to.x},${to.y+187}`));
+    assert.equal((path.match(/Q/g)??[]).length,4,'all gutter corners are rounded');
 });

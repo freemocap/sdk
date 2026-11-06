@@ -19,3 +19,5 @@ export {default as SettingsGroupHeading} from './pipeline/settings/settings-grou
 export {default as SettingsSummaryChip} from './pipeline/settings/settings-summary-chip';
 export {default as AnchoredInfo} from './components/ui-components/AnchoredInfo';
 export {default as ValueSelector} from './components/ui-components/ValueSelector';
+
+export {SettingFilePath, type SettingFilePathProps} from './pipeline/settings/setting-file-path';
