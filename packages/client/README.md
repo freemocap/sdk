@@ -147,3 +147,11 @@ Use their `--help`; choose new ignored output directories. Live validation requi
 an exclusive camera/GPU slot. Tests use private recording copies and verify cleanup.
 The compatibility record distinguishes synthetic coverage, recorded-channel socket
 replay, real capture, production-app observation and untested external integrations.
+
+`PipelineSnapshot` contains complete `metrics` and `previews` arrays alongside
+graph and operation state. `MetricSeries`, `MetricPoint`, and `SamplePreview`
+types and schemas are exported from the package root. Telemetry carries operation
+identity, real units and step labels, finite values, and immutable preview URLs.
+The parser rejects unknown operation IDs, duplicate series/sample IDs, and
+non-increasing metric steps. Current producers must send empty arrays when no
+telemetry exists; update producers and regenerate obsolete output together.

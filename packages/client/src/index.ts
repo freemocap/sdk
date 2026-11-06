@@ -25,3 +25,4 @@ export function createClient(options:ClientOptions){
 }
 
 export * from './transport/pipeline-snapshot.js';
+export * from './transport/pipeline-telemetry.js';

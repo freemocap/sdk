@@ -10,6 +10,7 @@ import logging
 from .definition import CompiledGraph, compile_graph
 from .executor import execute_recording_graph, RecordingExecutionResult
 from .progress import OperationProgressSnapshot
+from .telemetry import MetricPoint, MetricSeries, SamplePreview
 
 log = logging.getLogger(__name__)
 TERMINAL = frozenset(("complete", "failed", "cancelled", "blocked"))
@@ -43,10 +44,25 @@ class OperationContext:
                 files_read=tuple(dict.fromkeys((*old.files_read, *map(str, reads)))),
                 files_written=tuple(dict.fromkeys((*old.files_written, *map(str, writes)))))
 
+    def metric(self, id: str, *, label: str, step: float, value: float,
+               unit: str, step_label: str = "Step") -> None:
+        """Append a finite scalar; repeated latest step replaces that observation."""
+        self.run._metric(self.node_id, id=id, label=label, step=step, value=value,
+                         unit=unit, step_label=step_label)
+
+    def preview(self, id: str, *, label: str, image_url: str, step: float,
+                step_label: str = "Step", checkpoint_id: str | None = None) -> None:
+        """Replace a fixed sample's preview with a published immutable artifact URL."""
+        self.run._preview(self.node_id, id=id, label=label, image_url=image_url,
+                          step=step, step_label=step_label, checkpoint_id=checkpoint_id)
+
 
 class PipelineRun:
     def __init__(self, graph: CompiledGraph, *, labels: Mapping[str, str] | None = None,
-                 on_snapshot: Callable[[dict], None] | None = None):
+                 on_snapshot: Callable[[dict], None] | None = None,
+                 telemetry_point_limit: int = 2048):
+        if isinstance(telemetry_point_limit, bool) or not isinstance(telemetry_point_limit, int) or telemetry_point_limit < 2:
+            raise ValueError("telemetry_point_limit must be an integer of at least 2")
         # Recompile a supplied model so manually fabricated order cannot bypass validation.
         self.graph = compile_graph(graph.definition)
         self.run_id = str(uuid4())
@@ -61,6 +77,9 @@ class PipelineRun:
         self._error: str | None = None
         self._observers = [on_snapshot] if on_snapshot is not None else []
         self.result: RecordingExecutionResult | None = None
+        self._telemetry_point_limit = telemetry_point_limit
+        self._metrics: dict[tuple[str, str], MetricSeries] = {}
+        self._previews: dict[tuple[str, str], SamplePreview] = {}
         nodes = {node.id: node for node in self.graph.definition.nodes}
         self._operations = {}
         for node_id in self.graph.topological_order:
@@ -76,8 +95,52 @@ class PipelineRun:
             return {"run_id": self.run_id, "sequence": self._sequence, "status": self._status,
                 "cancel_requested": self._cancel.is_set(), "graph": self.graph.model_dump(mode="json"),
                 "operations": [value.model_dump(mode="json") for value in self._operations.values()],
+                "metrics": [value.model_dump(mode="json") for value in self._metrics.values()],
+                "previews": [value.model_dump(mode="json") for value in self._previews.values()],
                 "elapsed_seconds": max(0.0, now - self._started) if self._started is not None else 0.0,
                 "error": self._error}
+
+    def _check_telemetry_operation(self, node_id: str) -> None:
+        if self._operations[node_id].status != "running":
+            raise ValueError("Telemetry requires a running operation")
+
+    def _metric(self, node_id: str, *, id: str, label: str, step: float,
+                value: float, unit: str, step_label: str) -> None:
+        point = MetricPoint(step=step, value=value)
+        series = MetricSeries(operation_id=node_id, id=id, label=label,
+                              unit=unit, step_label=step_label, points=(point,))
+        with self._lock:
+            self._check_telemetry_operation(node_id)
+            key = (node_id, id)
+            previous = self._metrics.get(key)
+            if previous is not None:
+                if (previous.label, previous.unit, previous.step_label) != (label, unit, step_label):
+                    raise ValueError("Metric identity, labels and units must remain stable")
+                if step < previous.points[-1].step:
+                    raise ValueError("Metric steps must not decrease")
+                points = previous.points[:-1] if step == previous.points[-1].step else previous.points
+                points = (*points, point)
+                omitted = max(0, len(points) - self._telemetry_point_limit)
+                series = series.model_copy(update={"points": points[-self._telemetry_point_limit:],
+                    "omitted_points": previous.omitted_points + omitted})
+            elif sum(operation == node_id for operation, _ in self._metrics) >= 32:
+                raise ValueError("Display telemetry supports at most 32 metric series per operation")
+            self._metrics[key] = series
+            self._publish()
+
+    def _preview(self, node_id: str, **values) -> None:
+        preview = SamplePreview(operation_id=node_id, **values)
+        with self._lock:
+            self._check_telemetry_operation(node_id)
+            key = (node_id, preview.id)
+            previous = self._previews.get(key)
+            if previous is not None:
+                if preview.step < previous.step or preview.step_label != previous.step_label:
+                    raise ValueError("Preview steps must not decrease or change units")
+            elif sum(operation == node_id for operation, _ in self._previews) >= 16:
+                raise ValueError("Display telemetry supports at most 16 fixed previews per operation")
+            self._previews[key] = preview
+            self._publish()
 
     def subscribe(self, callback: Callable[[dict], None]) -> Callable[[], None]:
         """Observe snapshots; callbacks should enqueue promptly, never perform network IO."""

@@ -204,3 +204,24 @@ matches the actual crop aspect ratio, filling the image surface without added
 letterboxing or clipping the supplied target bounds. The fixed backing canvas
 avoids per-frame buffer resizing; its displayed aspect restores source pixel
 proportions. Manual placement/width persist while parent bounds remain enforced.
+
+## Live scalar charts and prediction previews
+
+`MetricSeriesChart({series, color?, height?})` displays a validated client
+`MetricSeries` with its real step label and scalar units, latest value, and
+explicit display-history omission count. Plot height defaults to 180 pixels for
+compact dashboard layouts. Each plot uses the extracted Core D3 scaffolding:
+persistent paths and axes, resize observation, clipping, and bounded 1 Hz display
+refresh. It does not convert loss to FPS or replace missing values with zero.
+
+`SamplePreviewGrid({previews, resolveImageUrl?})` displays lazy, asynchronously
+decoded immutable prediction artifacts with their actual step and checkpoint.
+Use `resolveImageUrl` for root-relative API URLs when frontend and backend origins
+differ. Loading and failure states replace an unavailable image rather than showing
+an old prediction under a new checkpoint label. The application supplies overlays
+and controls prediction cadence; the SDK never performs model inference.
+
+Compose these controls with `PipelinePanel` or `PipelineWindow` and the retained
+pipeline snapshot. The application owns the dashboard tabs, trainer settings,
+train/validation split, durable history, and run selection. Chart extraction
+provenance is recorded in `provenance/charts-seed.json` at the SDK repository root.

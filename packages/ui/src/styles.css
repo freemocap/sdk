@@ -3,6 +3,7 @@
 @import './pipeline/mocap-processing.css';
 @import './pipeline/settings/settings-layout.css';
 @import './pipeline/pipeline-panel.css';
+@import './charts/telemetry.css';
 @import './components/viewport3d/scene/viewport-overlay.css';
 @import 'react-grid-layout/css/styles.css';
 @import 'react-resizable/css/styles.css';

@@ -1,0 +1,18 @@
+{
+  "core_revision": "3ae9842d896085e7d05603e279fa0a53502122c1",
+  "sources": {
+    "BaseD3ChartView.tsx": {
+      "source": "freemocap-ui/src/components/framerate-viewer/BaseD3ChartView.tsx",
+      "sha256": "237727aabc0141ae21f33d2c4ff4887e1f80f3d1c9e07a40a53c4a12f9630d9a"
+    },
+    "d3ChartUtils.ts": {
+      "source": "freemocap-ui/src/components/framerate-viewer/d3ChartUtils.ts",
+      "sha256": "0a6dbea57e113f7efac8011f83a35e520ff7f1997fd75c787796bd7a3c9a2871"
+    },
+    "FramerateTimeseriesView.tsx": {
+      "source": "freemocap-ui/src/components/framerate-viewer/FramerateTimeseriesView.tsx",
+      "sha256": "032b603b8a1d82b168885fef9eaecab614c43a9d2ab1e260ecfd62c0fd386424"
+    }
+  },
+  "adaptation": "Persistent D3 scaffolding, resize lifecycle, clipped chart area and axis theme extracted. Generic step/value chart replaces FPS conversion, fixed rolling window and Core server context. Immediate initial paint and current callback updates; zoom controls only when supported. No Core runtime import."
+}

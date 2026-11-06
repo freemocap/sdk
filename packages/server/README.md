@@ -73,3 +73,30 @@ when the connection closes. Its version-1 wire shape is
 `{kind: "pipeline_snapshot", version: 1, timestamp, sequence, snapshot}`; the nested
 snapshot preserves nulls and avoids overwriting envelope fields. Register the
 exported client `pipelineSnapshotKind`, then read `message.snapshot`.
+
+### Scalar metrics and sample previews
+
+Handlers report actual scalar observations with
+`context.metric("train-loss", label="Training loss", step=epoch, value=loss,
+unit="loss", step_label="Epoch")`. Report calculated pixel error as a separate
+series with `unit="px"`; absent metrics remain absent. IDs are scoped to the
+operation. Labels and units remain stable, steps increase, and repeating the
+latest step replaces its value. Nonfinite values and out-of-order steps fail
+validation without publishing a partial update.
+
+`context.preview("sample-left", label="Left sample", image_url="/artifacts/e2.png",
+step=2, step_label="Epoch", checkpoint_id="epoch-2")` replaces a fixed sample's
+preview. Publish the immutable image first. Root-relative or HTTP(S) URLs are
+accepted; local paths and embedded images are not. The application owns overlays,
+evaluation cadence, serving artifacts, and matching predictions to checkpoints.
+
+Every snapshot contains full `metrics` and `previews` arrays, including empty
+arrays before telemetry exists. The existing stream and terminal reconnect replay
+carry them without another connection or prior-message dependency. Display history
+retains the latest 2048 points per series by default; use
+`PipelineRun(..., telemetry_point_limit=...)` to choose another limit (at least 2).
+`omitted_points` reports discarded display observations. Each operation accepts
+up to 32 scalar series and 16 fixed sample IDs. The application must save complete
+history and artifacts separately; this bounded process-local display state is not
+durable storage. Telemetry reports require a running operation and do not replace
+explicit cancellation checkpoints.

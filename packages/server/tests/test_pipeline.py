@@ -22,6 +22,54 @@ def graph(ids=("bind", "publish")):
             for a, b in zip(ids, ids[1:]))))
 
 
+def test_telemetry_retention_validation_and_terminal_replay():
+    run = PipelineRun(graph(("train",)), telemetry_point_limit=2)
+    contexts = []
+    def train(inputs, ctx):
+        contexts.append(ctx)
+        for epoch, loss in ((1, 3.0), (2, 2.0), (3, 1.0), (3, 0.9)):
+            ctx.metric("loss", label="Training loss", step=epoch, value=loss, unit="loss", step_label="Epoch")
+            ctx.preview("left", label="Left sample", image_url=f"/samples/e{epoch}.png", step=epoch,
+                        step_label="Epoch", checkpoint_id=f"epoch-{epoch}")
+        before = run.snapshot()
+        for overrides in ({"value": float("nan")}, {"value": float("inf")}, {"step": 2}, {"unit": "px"}):
+            values = dict(label="Training loss", step=3, value=1, unit="loss", step_label="Epoch")
+            values.update(overrides)
+            with pytest.raises(ValueError): ctx.metric("loss", **values)
+        with pytest.raises(ValueError):
+            ctx.preview("left", label="Left sample", image_url="file:///secret.png", step=4)
+        assert run.snapshot()["sequence"] == before["sequence"]
+        return {"value": "checkpoint"}
+    assert run.execute({"train": train}).complete
+    final = run.snapshot()
+    assert final["metrics"][0]["points"] == [{"step": 2.0, "value": 2.0}, {"step": 3.0, "value": 0.9}]
+    assert final["metrics"][0]["omitted_points"] == 1
+    assert len(final["previews"]) == 1 and final["previews"][0]["checkpoint_id"] == "epoch-3"
+    with pytest.raises(ValueError, match="running"):
+        contexts[0].metric("loss", label="Training loss", step=4, value=0.8, unit="loss", step_label="Epoch")
+    registry = PipelineRegistry(); registry.add(run)
+    replay = []
+    unsubscribe = registry.subscribe(replay.append)
+    assert replay[-1]["metrics"] == final["metrics"] and replay[-1]["previews"] == final["previews"]
+    unsubscribe()
+    # Observers cannot mutate retained telemetry.
+    final["metrics"][0]["points"].clear()
+    assert len(run.snapshot()["metrics"][0]["points"]) == 2
+
+
+def test_telemetry_ids_are_bounded_per_operation():
+    run = PipelineRun(graph(("train",)))
+    def train(inputs, ctx):
+        for i in range(32): ctx.metric(str(i), label="Loss", step=1, value=i, unit="loss")
+        with pytest.raises(ValueError, match="32"):
+            ctx.metric("extra", label="Loss", step=1, value=1, unit="loss")
+        for i in range(16): ctx.preview(str(i), label="Sample", image_url=f"/sample/{i}.png", step=1)
+        with pytest.raises(ValueError, match="16"):
+            ctx.preview("extra", label="Sample", image_url="/sample/extra.png", step=1)
+        return {"value": 1}
+    assert run.execute({"train": train}).complete
+
+
 def test_compiler_rejects_missing_binding_semantic_mismatch_and_cycles():
     definition=graph().definition
     with pytest.raises(ValueError, match="Unbound"):
@@ -137,6 +185,9 @@ def test_stream_coalesces_per_run_preserves_terminals_and_reconnects():
             runs.append(run)
             def handler(inputs,ctx):
                 for i in range(200):ctx.progress(i,200,"moments")
+                ctx.metric("loss", label="Training loss", step=1, value=0.25, unit="loss", step_label="Epoch")
+                ctx.preview("sample", label="Sample", image_url="/samples/e1.png", step=1,
+                            step_label="Epoch", checkpoint_id="epoch-1")
                 return {"value":"artifact"}
             await asyncio.to_thread(run.execute,{"project":handler})
         await asyncio.wait_for(entered.wait(),5)
@@ -160,4 +211,6 @@ def test_stream_coalesces_per_run_preserves_terminals_and_reconnects():
         with pytest.raises(asyncio.CancelledError):await reconnect
         assert {m["snapshot"]["run_id"] for m in messages}=={r.run_id for r in runs}
         assert all(m["snapshot"]["status"]=="complete" for m in messages)
+        assert all(m["snapshot"]["metrics"][0]["points"] == [{"step":1.0,"value":0.25}] for m in messages)
+        assert all(m["snapshot"]["previews"][0]["checkpoint_id"] == "epoch-1" for m in messages)
     asyncio.run(scenario())
