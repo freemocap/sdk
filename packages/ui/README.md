@@ -272,3 +272,6 @@ For a short linear workflow, pass `graphLayout="single-row"` to `PipelinePanel`.
 The default remains `two-rows`. Both layouts use measured card heights, open
 settings by default, and an initial camera scale of 1. Narrow viewports use the
 existing pan/zoom controls rather than automatically shrinking the text.
+
+### Workspace composition
+`WorkspaceTabs` supplies controlled keyboard-navigable tabs (arrows/Home/End). Applications own panel IDs, accessible labels, mounted lifetimes and persistence. `WorkspaceToolbar` holds persistent application-owned commands and concise consequential facts. `RunActivity` displays caller-supplied stage, elapsed time, optional progress and update age; after 30 seconds without an update it reports stale telemetry and stops pulsing. This describes telemetry freshness, not task failure. Reduced-motion preference disables the pulse. These components use existing Skull tokens via `@freemocap/ui/styles.css`; scope domain layout rules rather than overriding generic headers/buttons.

@@ -1,3 +1,4 @@
+@import './workspace/workspace.css';
 @import './styles/App.css';
 @import './pipeline/processing-graph.css';
 @import './pipeline/mocap-processing.css';
@@ -123,9 +124,9 @@
 .sdk-log-visibility .button {border:1px solid var(--color-border-control,#59696d); background:var(--color-bg-secondary,#263438); color:var(--color-text-primary,#eef4f4); box-shadow:0 2px 7px #0006;}
 .sdk-image-catalog-actions {display:flex; flex-wrap:wrap; gap:6px;}
 .sdk-image-thumbnail-unavailable {display:flex; aspect-ratio:16/9; align-items:center; justify-content:center; color:#aab8bf; font-size:11px;}
-.playback-navigation-group {display:flex; align-items:center; gap:3px; padding:3px 5px; border:1px solid #5d858d; background:#203c42; border-radius:5px; flex-shrink:0;}
-.playback-navigation-group>span {display:flex; flex-direction:column; align-items:center; padding:0 3px; font-size:11px; font-weight:600; color:#e6f6f8;}
-.playback-navigation-group small {font-size:9px; color:#accbd1;}
+.playback-navigation-group {display:flex; align-items:center; gap:3px; padding:3px 5px; border:1px solid var(--gray-600); background:var(--gray-800); border-radius:5px; flex-shrink:0;}
+.playback-navigation-group>span {display:flex; flex-direction:column; align-items:center; padding:0 3px; font-size:11px; font-weight:600; color:var(--gray-100);}
+.playback-navigation-group small {font-size:9px; color:var(--gray-300);}
 
 .sdk-image-include-all.button {width:100%; min-height:36px; justify-content:center; padding:7px 12px; border:1px solid #77c9b4; border-radius:5px; background:#28594e; color:#f2fff9; font-weight:600;}
 .sdk-image-include-all.button p {color:inherit;}

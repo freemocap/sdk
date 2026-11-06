@@ -310,14 +310,11 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                     />
                 </div>
 
-                {navigationGroups?.map(group=><div key={group.id} className="playback-navigation-group" role="group" aria-label={`${group.label} images`}>
-                    <span>{group.label}{group.count!==undefined&&<small>{group.count}</small>}</span>
-                    <IconButton icon="framebackward-icon" title={`Previous ${group.label.toLowerCase()} image`} ariaLabel={`Previous ${group.label.toLowerCase()} image`}
-                        disabled={!playbackReady||group.pending||!group.previous} onClick={group.previous} tooltip tooltipPortal
-                        tooltipText={`Previous ${group.label.toLowerCase()} image`} tooltipPosition="pos-top"/>
-                    <IconButton icon="frameforward-icon" title={`Next ${group.label.toLowerCase()} image`} ariaLabel={`Next ${group.label.toLowerCase()} image`}
-                        disabled={!playbackReady||group.pending||!group.next} onClick={group.next} tooltip tooltipPortal
-                        tooltipText={`Next ${group.label.toLowerCase()} image`} tooltipPosition="pos-top"/>
+                {navigationGroups?.map(group=><div key={group.id} className="playback-navigation-group" role="group" aria-label={group.label} aria-busy={group.pending}>
+                    <span>{group.label}<small>{group.count===0?'No included frames':group.count!==undefined?`${group.count} frames`:''}</small></span>
+                    <button type="button" aria-label={`Previous ${group.itemLabel??group.label.toLowerCase()}`} disabled={!playbackReady||group.pending||!group.previous} onClick={group.previous}>Previous</button>
+                    <button type="button" aria-label={`Next ${group.itemLabel??group.label.toLowerCase()}`} disabled={!playbackReady||group.pending||!group.next} onClick={group.next}>Next</button>
+                    {group.detail&&<small role="status">{group.detail}</small>}
                 </div>)}
                 {/* Recording media source */}
                 {validSources.length >= 2 && selectedSource && onSourceChange && (

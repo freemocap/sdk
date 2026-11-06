@@ -47,4 +47,6 @@ export interface ImageControlContext {
 /** Application-supplied navigation targets; the SDK does not infer labeled/included membership. */
 export interface PlaybackNavigationGroup {
     id:string;label:string;previous?:()=>void;next?:()=>void;pending?:boolean;count?:number;
+    /** Singular accessible target name, e.g. training frame, supplied by the application. */
+    itemLabel?:string;detail?:string;
 }

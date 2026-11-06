@@ -1,6 +1,7 @@
 export {PlaybackWorkspace, type PlaybackWorkspaceProps} from './PlaybackWorkspace';
+export {WorkspaceTabs,WorkspaceToolbar,RunActivity,type WorkspaceTab,type RunActivityProps} from './workspace/Workspace';
 export type {RecordingSelection} from './playback-resources';
-export {ResizablePanel, ResizablePanelGroup, ResizableHandle} from './layout/ResizablePanels';
+export {ResizablePanel, ResizablePanelGroup, ResizableHandle, type ResizablePanelHandle} from './layout/ResizablePanels';
 export {LogStore, type LogSnapshot} from './logs/log-store';
 export {LogTerminal, type LogTerminalProps} from './logs/LogTerminal';
 export {BottomLogPanel, type BottomLogPanelProps} from './logs/BottomLogPanel';
