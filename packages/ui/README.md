@@ -160,5 +160,24 @@ source frame, and image dimensions in `TargetCropRequest`. Return null when that
 projection is unavailable. Applications own geometry, padding, and provenance;
 the SDK clamps intersecting bounds and clears invalid crops. Each close-up draws
 from the same committed bitmap as the full camera image, without another decoder,
-clock, network request, or pixel readback. The bottom close-up area keeps the full
-image unobscured. Updated providers also refresh the paused committed frame.
+clock, network request, or pixel readback. Each camera has a larger floating close-up with a draggable header and aspect-preserving
+resize corner. Pointer capture and keyboard arrows move/resize it within its camera;
+placement survives frame and source changes and clamps on parent resize. Interactions
+do not pan the underlying image. Updated providers also refresh the paused committed frame.
+
+
+`PlaybackWorkspace.renderImageControls(context)` places application controls on
+individual camera images. `context.getPresentedFrame()` reads the currently
+committed camera-specific `PresentedImage` or null while seeking; use it on click,
+after `context.pause()`, and validate application result/revision membership before
+saving. `activeVideoId` identifies the camera selected from a catalog. The SDK does
+not infer inclusion or approval from playback position.
+
+`ImageSelectionToggle` supplies visible included/excluded, saving, unavailable,
+and error states. `ImageCatalog` groups supplied image entries by moment, displays
+lazy thumbnails and inclusion controls, and offers inclusion/camera filters.
+Its controlled navigation accepts actual previous/next image IDs from the
+application's saved membership. Included and Generated modes are distinct;
+focused F/G shortcuts use those supplied IDs and never wrap or invent membership.
+The application owns catalog routes, persistence, conflicts, selection semantics,
+thumbnail resources, and exact confirmed-frame seeking.

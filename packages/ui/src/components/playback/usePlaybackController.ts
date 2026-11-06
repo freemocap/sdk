@@ -1,4 +1,4 @@
-import type {PresentedFrame, TargetCropProvider} from '../../playback-presentation';
+import type {PresentedFrame, PresentedImage, TargetCropProvider} from '../../playback-presentation';
 import {VideoPresentation} from '@/services/recording/video-presentation';
 import {BrowserVideo, type VideoEntry} from '@/services/recording/browser-video';
 import {videoFrameSeekTime, waitForSharedPresentation} from '@/services/recording/presentation-barrier';
@@ -66,6 +66,14 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         return Object.freeze({recording:Object.freeze({id:recordingId,parentDirectory:recordingParentDirectory??undefined}),mediaSource:source[0],
             localFrameIndex:index,sourceFrameNumber,timestampSeconds,presentationEpoch:shown.presentationEpoch});
     },[recordingId,recordingParentDirectory,source?.[0],leader]);
+    const getPresentedImage=useCallback((videoId:string):PresentedImage|null=>{
+        const frame=getPresentedFrame();if(!frame)return null;
+        const video=videosRef.current.find(entry=>entry.videoId===videoId);
+        const timeline=bundle?.media.find(item=>item.video_source===frame.mediaSource && item.video_filename===video?.filename)?.timeline;
+        const sourceFrameNumber=timeline?.frame_numbers[frame.localFrameIndex],timestampSeconds=timeline?.timestamps_s[frame.localFrameIndex];
+        if(!video || !Number.isSafeInteger(sourceFrameNumber) || !Number.isFinite(timestampSeconds))return null;
+        return Object.freeze({...frame,videoId,filename:video.filename,sourceFrameNumber:sourceFrameNumber!,timestampSeconds:timestampSeconds!});
+    },[getPresentedFrame,bundle]);
     const emitPresented=useCallback(()=>{
         const frame=getPresentedFrame(),previous=publishedFrame.current;
         if(frame?.presentationEpoch===previous?.presentationEpoch && frame?.localFrameIndex===previous?.localFrameIndex)return;
@@ -276,7 +284,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
     }, [handlePlayPause, seek]);
     return {
-        pause,getPresentedFrame,seekPresentedFrame,invalidatePresentation,
+        pause,getPresentedFrame,getPresentedImage,seekPresentedFrame,invalidatePresentation,
         manifest: bundle?.manifest ?? null, setPlaybackRun, reloadManifest, error, getRecordingTime, getCachedFrames, getDisplayFps,
         seekFrame: isPlaying ? currentFrame : requestedFrame,
         isPlaying, currentFrame, totalFrames, duration, playbackRate, fps, currentTime: currentFrame / fps, settings,

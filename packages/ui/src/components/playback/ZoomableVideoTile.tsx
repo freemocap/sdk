@@ -1,9 +1,14 @@
+import type {PlaybackPresentationProps} from '../../playback-presentation';
+import {TargetCloseup} from './TargetCloseup';
 import React, {useCallback, useRef} from 'react';
 import {useTranslation} from 'react-i18next';
 import {useZoomTransform} from '@/hooks/useZoomTransform';
 import type {PlaybackController} from './usePlaybackController';
 
-interface ZoomableVideoTileProps {
+interface ZoomableVideoTileProps extends Pick<PlaybackPresentationProps,'renderImageControls'> {
+    active?:boolean;
+    pause:PlaybackController['pause'];
+    getPresentedImage:PlaybackController['getPresentedImage'];
     videoId: string;
     streamUrl: string;
     filename: string;
@@ -24,8 +29,9 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
     hasError,
     setVideoRef,
     setPresentationRef,
-    setFrameOverlayRef, showTargetCrop, setCropRef,
+    setFrameOverlayRef, showTargetCrop, setCropRef, renderImageControls, active, pause, getPresentedImage,
 }) => {
+    const surfaceRef=useRef<HTMLDivElement>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const registerVideo = useCallback((element: HTMLVideoElement | null): void => {
         setVideoRef(videoId, element);
@@ -36,14 +42,14 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
     const { t } = useTranslation();
 
     return (
-        <div
+        <div ref={surfaceRef}
             className="w-full h-full overflow-hidden pos-rel"
             style={{
                 backgroundColor: '#000',
-                cursor,
+                cursor, outline:active?'3px solid var(--color-info, #4ec5cf)':undefined,outlineOffset:-3,
             }}
         >
-            <div ref={containerRef} {...containerHandlers} style={{position:'absolute',inset:0,bottom:showTargetCrop?'min(128px, 30%)':0,overflow:'hidden'}}>
+            <div ref={containerRef} {...containerHandlers} style={{position:'absolute',inset:0,overflow:'hidden'}}>
             <div style={{...zoomWrapperStyle, position: 'relative'}}>
                 <video playsInline muted
                     ref={registerVideo}
@@ -55,10 +61,12 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
             </div>
 
             </div>
-            {showTargetCrop && <figure className="playback-target-closeup" style={{margin:0}} aria-label={`${filename} target close-up`}>
-                <canvas ref={registerCrop} width={440} height={188} data-video-id={videoId} data-crop-status="unavailable"/>
-                <figcaption>Target close-up</figcaption>
-            </figure>}
+            {showTargetCrop && <TargetCloseup topInset={renderImageControls?44:0} surfaceRef={surfaceRef} videoId={videoId} registerCanvas={registerCrop}/>}
+            {renderImageControls && <div className="playback-image-controls"
+                onPointerDown={event=>event.stopPropagation()} onMouseDown={event=>event.stopPropagation()}
+                onTouchStart={event=>event.stopPropagation()} onWheel={event=>event.stopPropagation()}>
+                {renderImageControls({videoId,filename,pause,getPresentedFrame:()=>getPresentedImage(videoId)})}
+            </div>}
             {hasError && (
                 <div className="pos-abs inset-0 flex flex-col items-center justify-center gap-1 p-4 text-center z-5" style={{
                     backgroundColor: 'rgba(0, 0, 0, 0.85)',

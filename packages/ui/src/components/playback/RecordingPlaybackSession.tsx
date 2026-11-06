@@ -19,7 +19,7 @@ interface Props extends PlaybackPresentationProps {recording: RecordingSelection
     pointCloud?: import('../viewport3d/point-cloud-format').PointCloudPlayback;
     availableSources: PlaybackBundle['videos']['sources'] | null; selectedSource: string | null;
     setSelectedSource: (source: string) => void}
-const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, availableSources, selectedSource, setSelectedSource, showTimingNotice, pointCloud, controlsRef, onPresentedFrame, getTargetCrop}) => {
+const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, availableSources, selectedSource, setSelectedSource, showTimingNotice, pointCloud, controlsRef, onPresentedFrame, getTargetCrop, renderImageControls, activeVideoId}) => {
     const {t} = useTranslation();
     const {bundle, reloadManifest} = usePlaybackResources();
     const [settings, setSettings] = useState<CameraSettings>({columns: null, show3dView: true, layoutDirection: 'horizontal'});
@@ -100,6 +100,7 @@ const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, available
                                                 manualColumns={settings.columns}
                                                 resetKey={resetKey}
                                                 controller={controller}
+                                                renderImageControls={renderImageControls} activeVideoId={activeVideoId}
                                             />
                                         </div>
                                     </Panel>
@@ -129,6 +130,7 @@ const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, available
                                     manualColumns={settings.columns}
                                     resetKey={resetKey}
                                     controller={controller}
+                                                renderImageControls={renderImageControls} activeVideoId={activeVideoId}
                                 />
                             )}
                         </div>

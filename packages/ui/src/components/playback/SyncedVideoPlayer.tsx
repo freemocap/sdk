@@ -1,3 +1,4 @@
+import type {PlaybackPresentationProps} from '../../playback-presentation';
 import React, {useMemo} from 'react';
 import ReactGridLayout, {noCompactor} from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
@@ -18,7 +19,7 @@ export interface PlaybackSettings {
     timestampFormat: 'timecode' | 'seconds';
 }
 
-interface SyncedVideoPlayerProps {
+interface SyncedVideoPlayerProps extends Pick<PlaybackPresentationProps,'renderImageControls'|'activeVideoId'> {
     videos: VideoEntry[];
     manualColumns: number | null;
     resetKey: number;
@@ -29,7 +30,7 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
     videos,
     manualColumns,
     resetKey,
-    controller,
+    controller, renderImageControls, activeVideoId,
 }) => {
     const {t} = useTranslation();
 
@@ -102,6 +103,8 @@ export const SyncedVideoPlayer: React.FC<SyncedVideoPlayerProps> = ({
                             setPresentationRef={setPresentationRef}
                             setCropRef={controller.setCropRef}
                             showTargetCrop={controller.showTargetCrop}
+                            renderImageControls={renderImageControls} active={activeVideoId===video.videoId}
+                            pause={controller.pause} getPresentedImage={controller.getPresentedImage}
                             setFrameOverlayRef={setFrameOverlayRef}
                         />
                     </div>

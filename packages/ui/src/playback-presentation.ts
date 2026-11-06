@@ -1,4 +1,4 @@
-import type {Ref} from 'react';
+import type {Ref,ReactNode} from 'react';
 import type {RecordingSelection} from './playback-resources';
 
 /** Identity of an actually committed synchronized image group, not a seek request. */
@@ -16,6 +16,8 @@ export interface PlaybackWorkspaceHandle {
     seekFrame(localFrameIndex:number): Promise<PresentedFrame | null>;
 }
 export interface PlaybackPresentationProps {
+    renderImageControls?: (context:ImageControlContext)=>ReactNode;
+    activeVideoId?:string;
     getTargetCrop?: TargetCropProvider;
     controlsRef?: Ref<PlaybackWorkspaceHandle>;
     onPresentedFrame?: (frame:PresentedFrame|null)=>void;
@@ -31,3 +33,12 @@ export interface TargetCropRequest extends PresentedFrame {
 }
 /** Synchronous lookup of preloaded bounds for this exact camera/frame; null means unavailable. */
 export type TargetCropProvider = (request:TargetCropRequest)=>TargetCropBounds|null;
+
+export interface PresentedImage extends PresentedFrame {readonly videoId:string;readonly filename:string}
+export interface ImageControlContext {
+    readonly videoId:string;
+    readonly filename:string;
+    pause():void;
+    /** Read on click: null while seeking or before a committed image exists. */
+    getPresentedFrame():PresentedImage|null;
+}

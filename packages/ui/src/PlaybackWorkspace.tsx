@@ -10,7 +10,7 @@ export interface PlaybackWorkspaceProps extends PlaybackPresentationProps {baseU
     pointCloud?: import('./components/viewport3d/point-cloud-format').PointCloudPlayback}
 
 /** Core's playback presentation, with explicit endpoint and selection inputs. */
-export function PlaybackWorkspace({baseUrl, recording, showTimingNotice, pointCloud, controlsRef, onPresentedFrame, getTargetCrop}: PlaybackWorkspaceProps) {
+export function PlaybackWorkspace({baseUrl, recording, showTimingNotice, pointCloud, controlsRef, onPresentedFrame, getTargetCrop, renderImageControls, activeVideoId}: PlaybackWorkspaceProps) {
     const resources = useRecordingBundle(baseUrl, recording);
     const {bundle} = resources;
     const recordingKey = JSON.stringify([baseUrl, recording?.id, recording?.parentDirectory]);
@@ -30,7 +30,7 @@ export function PlaybackWorkspace({baseUrl, recording, showTimingNotice, pointCl
                 {resources.loading && <p role="status">Loading recording…</p>}
                 {resources.error && <p role="alert">{resources.error}</p>}
                 <RecordingPlaybackSession recording={recording} videos={videos} showTimingNotice={showTimingNotice}
-                    pointCloud={pointCloud} getTargetCrop={getTargetCrop} controlsRef={controlsRef} onPresentedFrame={onPresentedFrame}
+                    pointCloud={pointCloud} getTargetCrop={getTargetCrop} renderImageControls={renderImageControls} activeVideoId={activeVideoId} controlsRef={controlsRef} onPresentedFrame={onPresentedFrame}
                     availableSources={availableSources} selectedSource={selectedSource} setSelectedSource={setSelectedSource}/>
             </div>
         </PlaybackResources.Provider>
