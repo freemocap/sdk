@@ -31,64 +31,67 @@ test('bounded buffer keeps counts accurate and clear resets history', () => {
     assert.equal(store.getSnapshot().entries.length, 1);
 });
 
-function withStorage(run: (data: Map<string,string>) => void) {
-    const data = new Map<string,string>();
-    Object.defineProperty(globalThis, 'localStorage', {configurable:true,value:{
-        getItem:(k:string)=>data.get(k)??null, setItem:(k:string,v:string)=>data.set(k,v), removeItem:(k:string)=>data.delete(k),
-    }});
-    try {run(data);} finally {delete (globalThis as any).localStorage;}
+class MemoryPersistence {
+    data=new Map<string,any>();writes=0;fail=false;
+    async read(key:string){return structuredClone(this.data.get(key)??null);}
+    async write(key:string,value:any){this.writes++;if(this.fail)throw new Error('database quota');this.data.set(key,structuredClone(value));}
 }
-
-test('reload retains the full bounded session history and deduplicates server replay', () => withStorage(data => {
-    const store = new LogStore({storageKey:'one'});
-    store.beginSession('backend-one');
-    for (let n=0;n<10_005;n++) store.add(record(n));
-    // The application calls persistNow on beforeunload, not panel close.
-    store.persistNow();
-    assert.equal(JSON.parse(data.get('one')!).entries.length,10_000);
-    const restored = new LogStore({storageKey:'one'});
-    assert.equal(restored.getSnapshot().entries.length,0,'no old-session flash before handshake');
-    restored.beginSession('backend-one');
+async function withStorage(run:(data:Map<string,string>)=>Promise<void>) {
+    const data=new Map<string,string>();
+    Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{
+        getItem:(k:string)=>data.get(k)??null,setItem:(k:string,v:string)=>data.set(k,v),removeItem:(k:string)=>data.delete(k),
+    }});
+    try{await run(data);}finally{delete (globalThis as any).localStorage;}
+}
+test('full bounded history survives database reload without using localStorage for the snapshot',()=>withStorage(async data=>{
+    const persistence=new MemoryPersistence();const store=new LogStore({storageKey:'one',persistence});
+    await store.beginSession('backend-one');
+    for(let n=0;n<10005;n++)store.add(record(n));
+    await store.persistNow();
+    assert.equal(persistence.data.get('one').entries.length,10000);
+    assert.equal(data.has('one'),false);
+    const restored=new LogStore({storageKey:'one',persistence});
+    assert.equal(restored.getSnapshot().entries.length,0);
+    await restored.beginSession('backend-one');
     assert.deepEqual(restored.getSnapshot().entries,store.getSnapshot().entries);
-    restored.add(record(10_004));
-    assert.equal(restored.getSnapshot().entries.length,10_000);
-    const sameSnapshot=restored.getSnapshot().entries;
-    restored.beginSession('backend-one');
-    assert.equal(restored.getSnapshot().entries,sameSnapshot,'same-session reconnect does not clear');
-    const other = new LogStore({storageKey:'two'});other.beginSession('backend-one');
-    assert.equal(other.getSnapshot().entries.length,0);
+    const snapshot=restored.getSnapshot().entries;restored.add(record(10004));await restored.beginSession('backend-one');
+    assert.equal(restored.getSnapshot().entries,snapshot);
+    await restored.beginSession('backend-two');
+    assert.equal(restored.getSnapshot().entries.length,0);
+    assert.equal(persistence.data.get('one').sessionId,'backend-two');
 }));
-
-test('panel visibility has no store lifecycle and a new backend starts clean', () => withStorage(data => {
-    const store = new LogStore({storageKey:'one'});store.beginSession('backend-one');
-    store.add(record(1));
-    const visible = store.getSnapshot();
-    // While there is no consumer polling (panel hidden), collection continues.
-    store.add(record(2,'ERROR'));
-    assert.equal(visible.entries.length,1);
-    assert.equal(store.getSnapshot().entries.length,2);
-    store.dispose();
-    const reopened = new LogStore({storageKey:'one'});reopened.beginSession('backend-two');
-    assert.deepEqual(reopened.getSnapshot().entries,[]);
-    assert.deepEqual(reopened.getSnapshot().countsByLevel,{});
-    assert.equal(reopened.getSnapshot().hasErrors,false);
-    reopened.add({...record(3),log_id:'backend-two:1'});reopened.persistNow();
-    assert.deepEqual(JSON.parse(data.get('one')!).entries.map((r:any)=>r.log_id),['backend-two:1']);
+test('unload journal recovers pending entries and clear before database commit',()=>withStorage(async data=>{
+    const persistence=new MemoryPersistence();const store=new LogStore({storageKey:'one',persistence});
+    await store.beginSession('backend-one');store.add(record(1));await store.persistNow();
+    persistence.fail=true;store.add(record(2));await store.persistNow();
+    assert.equal(JSON.parse(data.get('one')!).pending.length,1);
+    persistence.fail=false;
+    const restored=new LogStore({storageKey:'one',persistence});await restored.beginSession('backend-one');
+    assert.deepEqual(restored.getSnapshot().entries.map(r=>r.log_id),['session:1','session:2']);
+    persistence.fail=true;restored.clear();await restored.persistNow();
+    persistence.fail=false;
+    const cleared=new LogStore({storageKey:'one',persistence});await cleared.beginSession('backend-one');
+    assert.equal(cleared.getSnapshot().entries.length,0);
 }));
-
-test('obsolete or corrupted storage is discarded and persistence failures are observable', () => withStorage(data => {
-    data.set('one',JSON.stringify([record(1)]));
-    const store=new LogStore({storageKey:'one'});store.beginSession('new');
-    assert.equal(store.getSnapshot().entries.length,0);
+test('quota-denied journal does not truncate database history or retry synchronous failures',()=>withStorage(async()=>{
+    const persistence=new MemoryPersistence();const store=new LogStore({storageKey:'one',persistence});await store.beginSession('s');
+    let writes=0;localStorage.setItem=()=>{writes++;throw new Error('local quota');};
+    persistence.fail=true;store.add(record(1));await store.persistNow();await store.persistNow();
+    assert.equal(writes,1);assert.equal(store.persistenceError,'database quota');
+    persistence.fail=false;await store.persistNow();assert.equal(store.persistenceError,null);
+    assert.equal(persistence.data.get('one').entries.length,1);
+}));
+test('legacy local snapshot migrates only for the matching session',()=>withStorage(async data=>{
+    data.set('one',JSON.stringify({sessionId:'s',entries:[record(1)]}));
+    const persistence=new MemoryPersistence();const store=new LogStore({storageKey:'one',persistence});await store.beginSession('s');
+    assert.equal(store.getSnapshot().entries.length,1);assert.equal(data.has('one'),false);
     assert.throws(()=>store.beginSession(' '),/identity/);
-    store.add(record(2));
-    const setItem=localStorage.setItem;
-    localStorage.setItem=()=>{throw new Error('quota exceeded');};
-    store.persistNow();
-    assert.equal(store.persistenceError,'quota exceeded');
-    assert.equal(store.getSnapshot().entries.length,1);
-    localStorage.setItem=setItem;store.persistNow();
-    assert.equal(store.persistenceError,null);
-    store.clear();store.add(record(2));
-    assert.equal(store.getSnapshot().entries.length,1,'clear also resets deduplication');
+}));
+
+test('a failed database read never overwrites unknown saved history',()=>withStorage(async()=>{
+    const persistence=new MemoryPersistence();await persistence.write('one',{sessionId:'s',revision:1,entries:[record(1)]});
+    persistence.read=async()=>{throw new Error('read unavailable');};
+    const store=new LogStore({storageKey:'one',persistence});await store.beginSession('s');store.add(record(2));await store.persistNow();
+    assert.match(store.persistenceError!,/could not be read/);
+    assert.equal(persistence.data.get('one').entries[0].log_id,'session:1');
 }));

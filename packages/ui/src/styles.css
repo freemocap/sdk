@@ -132,3 +132,25 @@
 .sdk-image-include-all.button p {color:inherit;}
 .sdk-image-include-all.button .icon {background-color:currentColor;}
 .sdk-image-include-all.button:disabled {opacity:.55;}
+
+/* Bounded rows keep scroll geometry independent of thumbnail load and membership writes. */
+.sdk-image-virtual-scroll {overflow-anchor:none;}
+.sdk-image-virtual-grid {box-sizing:border-box;}
+.sdk-image-virtual-grid > .sdk-image-card {height:268px;}
+.sdk-image-virtual-grid .sdk-image-thumbnail {height:132px;}
+.sdk-image-virtual-grid .sdk-image-thumbnail img {height:100%;object-fit:contain;}
+.sdk-image-virtual-grid .sdk-image-thumbnail-unavailable {height:100%;aspect-ratio:auto;}
+.sdk-image-virtual-grid .sdk-image-card-body {max-height:134px;overflow:auto;}
+.sdk-member-checkbox {display:flex;align-items:center;gap:6px;cursor:pointer;}
+.sdk-member-checkbox input {width:16px;height:16px;flex-shrink:0;}
+.sdk-member-facts {display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:11px;}
+.sdk-image-removed .sdk-image-thumbnail {opacity:.45;}
+.sdk-member-removed-label {position:absolute;top:4px;right:4px;background:var(--color-bg-secondary);padding:3px;font-size:11px;}
+/* Supplied object-frame coverage; sizing belongs to the application's resizable pane. */
+.sdk-spherical-coverage { display:flex; flex-direction:column; min-height:200px; height:100%; min-width:0; }
+.sdk-coverage-actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.sdk-coverage-actions .button { background:var(--color-bg-secondary, #26343f); color:var(--color-text-primary, #e2e9ee); border:1px solid var(--color-border-secondary, #50616d); padding:6px 10px; }
+.sdk-coverage-actions .button p { color:inherit; }
+.sdk-coverage-canvas { flex:1; min-height:160px; position:relative; }
+.sdk-coverage-canvas canvas { display:block; width:100%; height:100%; touch-action:none; }
+.sdk-coverage-canvas canvas:focus-visible { outline:2px solid var(--color-primary, #68c5ce); outline-offset:-2px; }

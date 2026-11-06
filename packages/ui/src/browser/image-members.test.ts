@@ -26,3 +26,11 @@ test('dataset browser renders authoritative members with removal actions and no 
     assert.match(candidates,/data-image-id="right"/);
     assert.match(candidates,/Image inclusion filter/);
 });
+
+test('large member galleries initially render a bounded window with controlled bulk selection',()=>{
+    const items=Array.from({length:3038},(_,i)=>({id:String(i),groupId:'g',groupLabel:'Frame '+i,camera:'Left',label:'Image '+i,thumbnailUrl:null,removed:i===0,facts:'Quality 90'}));
+    const html=renderToStaticMarkup(createElement(ImageCatalog,{mode:'members',items,selectedIds:['1'],onSelectionChange:()=>{},onNavigate:()=>{},onRemove:()=>{}}));
+    assert.ok((html.match(/data-image-id=/g)??[]).length<100);
+    assert.match(html,/3037/);assert.match(html,/Select Image 1/);assert.match(html,/Quality 90/);
+    assert.match(html,/Removed/);assert.doesNotMatch(html,/Remove Image 0 from training set/);
+});

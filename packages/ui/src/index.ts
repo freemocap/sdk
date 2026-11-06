@@ -28,3 +28,4 @@ export type {PresentedFrame, PlaybackWorkspaceHandle, PlaybackPresentationProps,
 export {ImageCatalog,ImageSelectionToggle,type ImageCatalogProps,type ImageCatalogItem,type DatasetImageItem,type ImageCatalogFilter,type ImageCatalogNavigation,type ImageSelectionToggleProps} from './browser/ImageCatalog';
 export {MetricSeriesChart,type MetricSeriesChartProps} from './charts/MetricSeriesChart';
 export {SamplePreviewGrid,type SamplePreviewGridProps} from './charts/SamplePreviewGrid';
+export {SphericalCoverageViewer,type SphericalCoverageViewerProps} from './coverage/SphericalCoverageViewer';

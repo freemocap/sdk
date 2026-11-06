@@ -1,4 +1,4 @@
-import {useState,type KeyboardEvent,type ReactNode} from 'react';
+import {useState,useRef,useLayoutEffect,useMemo,useEffect,type KeyboardEvent,type ReactNode} from 'react';
 import ButtonSm from '../components/ui-components/ButtonSm';
 import SubactionHeader from '../components/ui-components/SubactionHeader';
 
@@ -7,7 +7,7 @@ export interface ImageSelectionToggleProps {
 }
 export function ImageSelectionToggle({included,pending,disabled,error,onToggle,label}:ImageSelectionToggleProps) {
     return <div className="sdk-image-selection" data-included={included===null?'unavailable':String(included)}>
-        <ButtonSm text={pending?'Saving…':included===null?'No generated labels':included?'✓ Included':'＋ Include image'}
+        <ButtonSm text={pending?'Savingâ€¦':included===null?'No generated labels':included?'âœ“ Included':'ï¼‹ Include image'}
             title={label??(included===null?'No generated labels for this frame':included?'Exclude image from selection':'Include image in selection')}
             ariaPressed={included===null?undefined:included} ariaBusy={!!pending}
             disabled={disabled||pending||included===null} onClick={onToggle}
@@ -25,7 +25,7 @@ export interface ImageCatalogNavigation {
     mode:'included'|'generated';onModeChange:(mode:'included'|'generated')=>void;
     previousId?:string;nextId?:string;pending?:boolean;
 }
-export type DatasetImageItem=Omit<ImageCatalogItem,'included'>;
+export type DatasetImageItem=Omit<ImageCatalogItem,'included'> & {facts?:ReactNode;removed?:boolean};
 interface ImageCatalogBaseProps {
     actions?:ReactNode;
     onIncludeAll?:()=>void;includeAllPending?:boolean;includeAllDisabled?:boolean;
@@ -34,7 +34,7 @@ interface ImageCatalogBaseProps {
 }
 export type ImageCatalogProps=ImageCatalogBaseProps & (
     {mode?:'selection';items:readonly ImageCatalogItem[];onToggle:(id:string)=>void} |
-    {mode:'members';items:readonly DatasetImageItem[];onRemove:(id:string)=>void}
+    {mode:'members';items:readonly DatasetImageItem[];onRemove:(id:string)=>void;selectedIds?:readonly string[];onSelectionChange?:(ids:string[])=>void}
 );
 function CatalogThumbnail({src,label}:{src:string|null;label:string}) {
     const [failed,setFailed]=useState<string|null>(null);
@@ -62,7 +62,7 @@ export function ImageCatalog(props:ImageCatalogProps) {
     return <section className="sdk-image-catalog" aria-label="Generated images" tabIndex={0} onKeyDown={keys}>
         <SubactionHeader text="Image selection"/>
         <div className="sdk-image-catalog-counts"><strong>{included}<small> included</small></strong><span>{items.length} generated images</span></div>
-        {onIncludeAll&&<ButtonSm className="sdk-image-include-all" text={includeAllPending?'Saving…':'Include all'} iconClass="checkUpdate-icon" textColor=""
+        {onIncludeAll&&<ButtonSm className="sdk-image-include-all" text={includeAllPending?'Savingâ€¦':'Include all'} iconClass="checkUpdate-icon" textColor=""
             title="Include all generated images in this batch" disabled={pending||includeAllPending||includeAllDisabled||!items.length||included===items.length}
             ariaBusy={!!includeAllPending} onClick={onIncludeAll}/>}
         {actions&&<div className="sdk-image-catalog-actions">{actions}</div>}
@@ -111,32 +111,89 @@ export function ImageCatalog(props:ImageCatalogProps) {
     </section>;
 }
 
-/** Membership is application-owned; viewing a card never changes the dataset. */
-function MemberImageCatalog({items,activeId,onNavigate,onRemove,pending,error,actions}:Extract<ImageCatalogProps,{mode:'members'}>){
+/** Membership and bulk action selection are controlled independently by the application. */
+function MemberImageCatalog({items,activeId,onNavigate,onRemove,pending,error,actions,selectedIds=[],onSelectionChange}:Extract<ImageCatalogProps,{mode:'members'}>){
+    const scroll=useRef<HTMLDivElement>(null);
+    const [viewport,setViewport]=useState({width:400,height:600,top:0});
+    const columns=Math.max(1,Math.floor((viewport.width+8)/120));
+    const rowHeight=276;
+    const rows=Math.ceil(items.length/columns);
+    const firstRow=Math.max(0,Math.floor(viewport.top/rowHeight)-2);
+    const lastRow=Math.min(rows,Math.ceil((viewport.top+viewport.height)/rowHeight)+2);
+    const visible=items.slice(firstRow*columns,lastRow*columns);
+    const selected=useMemo(()=>new Set(selectedIds),[selectedIds]);
+    const lastSelected=useRef<string|null>(null);
+    const anchor=useRef<{ids:readonly string[];index:number;offset:number}>({ids:[],index:0,offset:0});
+    const ids=useMemo(()=>items.map(item=>item.id),[items]);
+    const remember=()=>{
+        const top=scroll.current?.scrollTop??0;const index=Math.floor(top/rowHeight)*columns;
+        anchor.current={ids,index,offset:top-Math.floor(index/columns)*rowHeight};
+    };
+    useLayoutEffect(()=>{
+        const element=scroll.current;if(!element)return;
+        const measure=()=>setViewport(v=>({...v,width:Math.max(1,element.clientWidth-4),height:element.clientHeight,top:element.scrollTop}));
+        const observer=new ResizeObserver(measure);observer.observe(element);measure();return()=>observer.disconnect();
+    },[]);
+    useLayoutEffect(()=>{
+        const element=scroll.current;if(!element)return;
+        const old=anchor.current;
+        if(old.ids!==ids&&old.ids.length){
+            const positions=new Map(ids.map((id,index)=>[id,index]));
+            let next=-1;
+            for(let i=old.index;i<old.ids.length&&next<0;i++)next=positions.get(old.ids[i])??-1;
+            if(next<0)for(let i=Math.min(old.index-1,old.ids.length-1);i>=0&&next<0;i--)next=positions.get(old.ids[i])??-1;
+            element.scrollTop=next<0?0:Math.floor(next/columns)*rowHeight+old.offset;
+            setViewport(v=>({...v,top:element.scrollTop}));
+        }
+        remember();
+    },[ids,columns]);
+    useEffect(()=>{
+        if(!onSelectionChange||!selectedIds.length)return;
+        const eligible=new Set(items.filter(item=>!item.removed).map(item=>item.id));
+        const next=selectedIds.filter(id=>eligible.has(id));
+        if(next.length!==selectedIds.length)onSelectionChange(next);
+    },[items,selectedIds,onSelectionChange]);
+    const select=(id:string,checked:boolean,range:boolean)=>{
+        const next=new Set(selectedIds);const end=items.findIndex(item=>item.id===id);
+        const start=range&&lastSelected.current?items.findIndex(item=>item.id===lastSelected.current):-1;
+        const targets=start<0?[items[end]]:items.slice(Math.min(start,end),Math.max(start,end)+1);
+        for(const item of targets)if(item&&!item.removed){if(checked)next.add(item.id);else next.delete(item.id);}
+        lastSelected.current=id;onSelectionChange?.(items.filter(item=>next.has(item.id)&&!item.removed).map(item=>item.id));
+    };
     return <section className="sdk-image-catalog sdk-image-members" aria-label="Training images">
         <SubactionHeader text="Training images"/>
-        <div className="sdk-image-catalog-counts"><strong>{items.length}<small> images</small></strong></div>
+        <div className="sdk-image-catalog-counts"><strong>{items.filter(item=>!item.removed).length}<small> images</small></strong>
+            {onSelectionChange&&<span>{selectedIds.length} selected</span>}</div>
         {actions&&<div className="sdk-image-catalog-actions">{actions}</div>}
         {error&&<div className="sdk-image-save-error" role="alert">{error}</div>}
-        <div className="sdk-image-catalog-scroll">
+        <div ref={scroll} tabIndex={0} aria-label="Training image gallery" className="sdk-image-catalog-scroll sdk-image-virtual-scroll" onScroll={()=>{
+            remember();setViewport(v=>({...v,top:scroll.current?.scrollTop??0}));
+        }}>
             {!items.length&&<div className="sdk-image-empty">No images in the training set</div>}
-            <div className="sdk-image-members-grid">{items.map(item=><article key={item.id}
-                className={`sdk-image-card ${activeId===item.id?'active':''}`} data-image-id={item.id}
-                aria-label={`${item.camera} · ${item.groupLabel}`}>
-                <button className="sdk-image-thumbnail" aria-label={`Show ${item.label}`} aria-current={activeId===item.id?'true':undefined}
-                    disabled={pending} onClick={()=>onNavigate(item.id)}>
-                    <CatalogThumbnail src={item.thumbnailUrl} label={item.label}/>
-                    <span className="sdk-image-camera">{item.camera}</span>
-                </button>
-                <ButtonSm text="×" buttonType="secondary btn-danger" className="sdk-member-remove"
-                    title={`Remove ${item.label} from training set`} disabled={pending||item.pending}
-                    ariaBusy={!!item.pending} onClick={()=>onRemove(item.id)}/>
-                <div className="sdk-image-card-body"><strong>{item.camera}</strong>
-                    <small>{item.sourceFrameNumber===undefined?item.groupLabel:`Frame ${item.sourceFrameNumber}`}</small>
-                    {item.detail&&<small>{item.detail}</small>}
-                    {item.error&&<span className="sdk-image-save-error" role="alert">{item.error}</span>}
-                </div>
-            </article>)}</div>
+            <div className="sdk-image-members-grid sdk-image-virtual-grid" style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`,gridAutoRows:rowHeight-8,
+                paddingTop:firstRow*rowHeight,paddingBottom:(rows-lastRow)*rowHeight}}>
+                {visible.map(item=><article key={item.id}
+                    className={`sdk-image-card ${activeId===item.id?'active':''}${item.removed?' sdk-image-removed':''}`} data-image-id={item.id}
+                    aria-label={`${item.camera} · ${item.groupLabel}`}>
+                    <button className="sdk-image-thumbnail" aria-label={`Show ${item.label}`} aria-current={activeId===item.id?'true':undefined}
+                        disabled={pending} onClick={()=>onNavigate(item.id)}>
+                        <CatalogThumbnail src={item.thumbnailUrl} label={item.label}/>
+                        <span className="sdk-image-camera">{item.camera}</span>
+                    </button>
+                    {item.removed?<span className="sdk-member-removed-label">Removed</span>:<ButtonSm text="×" buttonType="secondary btn-danger" className="sdk-member-remove"
+                        title={`Remove ${item.label} from training set`} disabled={pending||item.pending}
+                        ariaBusy={!!item.pending} onClick={()=>onRemove(item.id)}/>}
+                    <div className="sdk-image-card-body">
+                        {onSelectionChange&&<label className="sdk-member-checkbox"><input type="checkbox" aria-label={`Select ${item.label}`} checked={selected.has(item.id)&&!item.removed}
+                            disabled={pending||item.pending||item.removed} onChange={event=>select(item.id,event.currentTarget.checked,(event.nativeEvent as MouseEvent).shiftKey??false)}/><span>{item.camera}</span></label>}
+                        {!onSelectionChange&&<strong>{item.camera}</strong>}
+                        <small>{item.sourceFrameNumber===undefined?item.groupLabel:`Frame ${item.sourceFrameNumber}`}</small>
+                        {item.detail&&<small title={item.detail}>{item.detail}</small>}
+                        {item.facts&&<div className="sdk-member-facts">{item.facts}</div>}
+                        {item.error&&<span className="sdk-image-save-error" role="alert">{item.error}</span>}
+                    </div>
+                </article>)}
+            </div>
         </div>
     </section>;
 }

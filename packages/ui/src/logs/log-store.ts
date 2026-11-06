@@ -1,222 +1,152 @@
 import {LogRecordSchema, type LogRecord} from '@freemocap/client';
+import {IndexedLogPersistence,type LogPersistence,type SavedLogs} from './log-persistence';
 export {LogRecordSchema, type LogRecord} from '@freemocap/client';
+const MAX_ENTRIES=10_000;
+const SAVE_DELAY_MS=500;
+const RETRY_DELAY_MS=60_000;
+const MAX_JOURNAL_CHARS=250_000;
+type PendingRecord={revision:number;record:LogRecord};
+type Journal={sessionId:string;revision:number;resetAt:number;pending:PendingRecord[]};
+export type LogSnapshot={entries:LogRecord[];hasErrors:boolean;countsByLevel:Record<string,number>;version:number};
 
-const MAX_ENTRIES = 10_000;
-// Periodic writes run at idle time; record serialization is cached incrementally.
-const AUTO_SAVE_INTERVAL_MS = 20_000;
-
-export type LogSnapshot = {
-    entries: LogRecord[];
-    hasErrors: boolean;
-    countsByLevel: Record<string, number>;
-    version: number;
-};
-
-/**
- * Mutable store for streaming log records from the backend.
- * Lives in a ref — no Redux, no immutable copies, no re-renders on every message.
- * Components poll via getSnapshot() on their own schedule (typically ~500ms).
- *
- * Uses a version counter to avoid copying the entries array when nothing has
- * changed since the last snapshot. The snapshot's entries array is only
- * reallocated when new logs have arrived.
- *
- * The application establishes a backend session before connecting its log stream.
- * Persistence retains the complete bounded history for that session across page
- * reloads. A new backend session never restores an old session's records.
- */
+/** Application-owned bounded history; panel visibility never changes its lifetime. */
 export class LogStore {
-    private entries: LogRecord[] = [];
-    private countsByLevel: Record<string, number> = {};
-    private hasErrors: boolean = false;
-
-    /** Incremented on every mutation (add / clear). */
-    private version: number = 0;
-
-    /** Version at which the last snapshot was taken. */
-    private lastSnapshotVersion: number = -1;
-
-    /** Cached snapshot entries — reused when version hasn't changed. */
-    private cachedEntries: LogRecord[] = [];
-    private cachedCountsByLevel: Record<string, number> = {};
-
-    /** Set when entries change since the last persist. */
-    private dirty: boolean = false;
-
-    /** Periodic save timer handle. */
-    private saveInterval: ReturnType<typeof setInterval> | null = null;
-
-    /** Pending idle-callback handle for a deferred persist (so we don't double-schedule). */
-    private idlePersistHandle: number | null = null;
-
-    private readonly storageKey: string | null;
-    private readonly recordIds = new Set<string>();
-    private sessionId: string | null = null;
-    private readonly serializedRecords = new WeakMap<LogRecord, string>();
-    /** Browser storage may be unavailable or full; the live buffer still works. */
-    persistenceError: string | null = null;
-    constructor({storageKey = null}: {storageKey?: string | null} = {}) {
-        this.storageKey = storageKey;
-
+    private entries:LogRecord[]=[];
+    private countsByLevel:Record<string,number>={};
+    private hasErrors=false;
+    private version=0;
+    private lastSnapshotVersion=-1;
+    private cachedEntries:LogRecord[]=[];
+    private cachedCountsByLevel:Record<string,number>={};
+    private recordIds=new Set<string>();
+    private serializedRecords=new WeakMap<LogRecord,string>();
+    private sessionId:string|null=null;
+    private revision=0;
+    private resetAt=0;
+    private pending:PendingRecord[]=[];
+    private dirty=false;
+    private started=false;
+    private timer:ReturnType<typeof setTimeout>|null=null;
+    private inFlight:Promise<void>|null=null;
+    private initialization:Promise<void>|null=null;
+    private epoch=0;
+    private retryAfter=0;
+    private journalFailed=false;
+    private readFailed=false;
+    persistenceError:string|null=null;
+    private readonly storageKey:string|null;
+    private readonly persistence:LogPersistence;
+    constructor({storageKey=null,persistence=new IndexedLogPersistence()}:{storageKey?:string|null;persistence?:LogPersistence}={}) {
+        this.storageKey=storageKey;this.persistence=persistence;
     }
-
-    /** Call with the backend lifetime identity before subscribing to log records. */
-    beginSession(sessionId: string): void {
-        if (!sessionId.trim()) throw new Error('Log session identity must not be empty');
-        if (this.sessionId === sessionId) return;
-        // Read before clearing; constructor deliberately does not expose an old tail.
-        let saved: unknown = null;
-        if (this.storageKey) {
-            try { saved = JSON.parse(localStorage.getItem(this.storageKey) ?? 'null'); }
-            catch { /* Missing, inaccessible or invalid storage starts empty. */ }
+    /** Await the backend lifetime handshake before subscribing/connecting the log stream. */
+    beginSession(sessionId:string):Promise<void> {
+        if(!sessionId.trim())throw new Error('Log session identity must not be empty');
+        if(this.sessionId===sessionId)return this.initialization??Promise.resolve();
+        this.sessionId=sessionId;const epoch=++this.epoch;
+        this.resetMemory();this.revision=0;this.resetAt=0;this.pending=[];this.dirty=false;
+        this.retryAfter=0;this.journalFailed=false;this.readFailed=false;
+        this.initialization=this.restore(sessionId,epoch);
+        return this.initialization;
+    }
+    private async restore(sessionId:string,epoch:number):Promise<void> {
+        if(!this.storageKey)return;
+        await this.inFlight;
+        let saved:SavedLogs|null=null;
+        try{saved=await this.persistence.read(this.storageKey);}catch(error){if(epoch===this.epoch){this.readFailed=true;this.fail(new Error('Log history could not be read; reload to retry: '+String(error)));}}
+        if(epoch!==this.epoch)return;
+        let local:any=null;
+        try{local=JSON.parse(localStorage.getItem(this.storageKey)??'null');}catch{/* Storage unavailable/corrupted. */}
+        // Migrate the former full localStorage snapshot once, only for this session.
+        if(!saved&&local?.sessionId===sessionId&&Array.isArray(local.entries))saved={sessionId,revision:0,entries:local.entries};
+        if(saved?.sessionId===sessionId&&Array.isArray(saved.entries)) {
+            this.revision=Number.isSafeInteger(saved.revision)?saved.revision:0;
+            for(const raw of saved.entries.slice(-MAX_ENTRIES)){const parsed=LogRecordSchema.safeParse(raw);if(parsed.success)this.append(parsed.data);}
         }
-        this.clear();
-        this.sessionId = sessionId;
-        if (saved && typeof saved === 'object' && 'sessionId' in saved && saved.sessionId === sessionId
-            && 'entries' in saved && Array.isArray(saved.entries)) {
-            for (const item of saved.entries.slice(-MAX_ENTRIES)) {
-                const result = LogRecordSchema.safeParse(item);
-                if (result.success) this.add(result.data);
+        if(local?.sessionId===sessionId&&Array.isArray(local.pending)) {
+            if(Number.isSafeInteger(local.resetAt)&&local.resetAt>this.revision){this.resetMemory();this.revision=local.resetAt;}
+            for(const item of local.pending){
+                if(!Number.isSafeInteger(item.revision)||item.revision<=this.revision)continue;
+                const parsed=LogRecordSchema.safeParse(item.record);if(parsed.success){this.append(parsed.data);this.revision=item.revision;}
             }
         }
-        this.dirty = true;
-        this.persistNow();
+        this.dirty=true;
+        // Replace previous-session storage even if this backend has not emitted yet.
+        await this.flush(true);
     }
-
-    start(): void {
-        if (this.saveInterval === null) {
-            this.saveInterval = setInterval(() => this.persistIfDirty(), AUTO_SAVE_INTERVAL_MS);
-        }
+    start():void{this.started=true;this.schedule();}
+    dispose():Promise<void>{this.started=false;if(this.timer!==null){clearTimeout(this.timer);this.timer=null;}return this.persistNow();}
+    private resetMemory():void {
+        this.entries=[];this.recordIds.clear();this.countsByLevel={};this.hasErrors=false;this.version++;
     }
-
-    /** Stop the auto-save timer and flush one last time. Call on teardown. */
-    dispose(): void {
-        if (this.saveInterval !== null) {
-            clearInterval(this.saveInterval);
-            this.saveInterval = null;
+    private append(record:LogRecord):boolean {
+        if(record.log_id&&this.recordIds.has(record.log_id))return false;
+        if(record.log_id)this.recordIds.add(record.log_id);
+        this.entries.push(record);this.version++;
+        if(this.storageKey)this.serializedRecords.set(record,JSON.stringify(record));
+        this.countsByLevel[record.levelname]=(this.countsByLevel[record.levelname]??0)+1;
+        if(this.entries.length>MAX_ENTRIES){
+            const removed=this.entries.splice(0,this.entries.length-MAX_ENTRIES);
+            for(const item of removed){if(item.log_id)this.recordIds.delete(item.log_id);if(--this.countsByLevel[item.levelname]<=0)delete this.countsByLevel[item.levelname];}
         }
-        if (this.idlePersistHandle !== null) {
-            const cic = (globalThis as typeof globalThis & {
-                cancelIdleCallback?: (handle: number) => void;
-            }).cancelIdleCallback;
-            if (cic) cic(this.idlePersistHandle);
-            else clearTimeout(this.idlePersistHandle);
-            this.idlePersistHandle = null;
-        }
-        // Final flush is synchronous — idle callbacks won't run during unload.
-        this.persistToLocalStorage();
+        this.hasErrors=(this.countsByLevel.ERROR??0)>0||(this.countsByLevel.CRITICAL??0)>0;
+        return true;
     }
-
-    add(record: LogRecord): void {
-        if (record.log_id && this.recordIds.has(record.log_id)) return;
-        if (record.log_id) this.recordIds.add(record.log_id);
-        this.entries.push(record);
-        // Serialize once per received record rather than all 10k on every flush.
-        if (this.storageKey) this.serializedRecords.set(record, JSON.stringify(record));
-        this.version++;
-
-        // Update counts
-        const level = record.levelname;
-        this.countsByLevel[level] = (this.countsByLevel[level] || 0) + 1;
-
-        // Track error state
-        if (level === 'ERROR' || level === 'CRITICAL') {
-            this.hasErrors = true;
-        }
-
-        // Trim to capacity
-        if (this.entries.length > MAX_ENTRIES) {
-            const removed = this.entries.splice(0, this.entries.length - MAX_ENTRIES);
-            for (const r of removed) {
-                if (r.log_id) this.recordIds.delete(r.log_id);
-                this.countsByLevel[r.levelname]--;
-                if (this.countsByLevel[r.levelname] <= 0) {
-                    delete this.countsByLevel[r.levelname];
-                }
+    add(record:LogRecord):void {
+        if(!this.append(record))return;
+        this.revision++;this.pending.push({revision:this.revision,record});
+        if(this.pending.length>MAX_ENTRIES)this.pending.splice(0,this.pending.length-MAX_ENTRIES);
+        this.dirty=true;this.schedule();
+    }
+    getSnapshot():LogSnapshot {
+        if(this.lastSnapshotVersion!==this.version){this.cachedEntries=this.entries.slice();this.cachedCountsByLevel={...this.countsByLevel};this.lastSnapshotVersion=this.version;}
+        return {entries:this.cachedEntries,countsByLevel:this.cachedCountsByLevel,hasErrors:this.hasErrors,version:this.version};
+    }
+    clear():void {
+        this.resetMemory();this.pending=[];this.resetAt=++this.revision;this.dirty=true;
+        void this.persistNow();
+    }
+    /** The small pending journal is synchronous for beforeunload; await for a durable full flush. */
+    persistNow():Promise<void>{this.writeJournal();return this.flush(true);}
+    private schedule():void {
+        if(!this.started||!this.storageKey||!this.sessionId||!this.dirty||this.timer!==null||this.inFlight)return;
+        this.timer=setTimeout(()=>{this.timer=null;void this.flush(false);},Math.max(SAVE_DELAY_MS,this.retryAfter-Date.now()));
+    }
+    private fail(error:unknown):void {
+        this.persistenceError=error instanceof Error?error.message:String(error);this.retryAfter=Date.now()+RETRY_DELAY_MS;
+    }
+    private writeJournal():void {
+        if(!this.storageKey||!this.sessionId||!this.dirty||this.journalFailed)return;
+        try {
+            let size=0;const rows:string[]=[];
+            for(const item of this.pending){
+                const raw=this.serializedRecords.get(item.record)!;size+=raw.length+64;
+                if(size>MAX_JOURNAL_CHARS)throw new Error('Log reload journal is full; awaiting database flush');
+                rows.push(`{"revision":${item.revision},"record":${raw}}`);
             }
-            this.hasErrors = (this.countsByLevel['ERROR'] ?? 0) > 0
-                || (this.countsByLevel['CRITICAL'] ?? 0) > 0;
-        }
-
-        this.dirty = true;
+            localStorage.setItem(this.storageKey,`{"sessionId":${JSON.stringify(this.sessionId)},"revision":${this.revision},"resetAt":${this.resetAt},"pending":[${rows.join(',')}]}`);
+        } catch(error){this.journalFailed=true;this.fail(error);}
     }
-
-    /**
-     * Returns a snapshot for React components to read during render.
-     * Only copies the entries array when new logs have arrived since the
-     * last call, avoiding the per-poll GC pressure of unconditional .slice().
-     */
-    getSnapshot(): LogSnapshot {
-        if (this.version !== this.lastSnapshotVersion) {
-            this.cachedEntries = this.entries.slice();
-            this.cachedCountsByLevel = { ...this.countsByLevel };
-            this.lastSnapshotVersion = this.version;
-        }
-
-        return {
-            entries: this.cachedEntries,
-            hasErrors: this.hasErrors,
-            countsByLevel: this.cachedCountsByLevel,
-            version: this.version,
-        };
-    }
-
-    clear(): void {
-        this.recordIds.clear();
-        this.entries = [];
-        this.countsByLevel = {};
-        this.hasErrors = false;
-        this.dirty = false;
-        this.version++;
-        this.cachedEntries = [];
-        this.cachedCountsByLevel = {};
-        this.lastSnapshotVersion = this.version;
-        this.clearLocalStorage();
-    }
-
-    /** Force an immediate persist (used for beforeunload). */
-    persistNow(): void {
-        this.persistToLocalStorage();
-    }
-
-    // ── private persistence helpers ──────────────────────────────────────
-
-    private persistIfDirty(): void {
-        if (!this.dirty || this.idlePersistHandle !== null) return;
-        // Defer the serialize + write to idle time so it can't land inside a
-        // streaming render frame. Falls back to a macrotask where rIC is absent.
-        const ric = (globalThis as typeof globalThis & {
-            requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
-        }).requestIdleCallback;
-        const run = (): void => {
-            this.idlePersistHandle = null;
-            this.persistToLocalStorage();
-        };
-        this.idlePersistHandle = ric
-            ? ric(run, { timeout: AUTO_SAVE_INTERVAL_MS })
-            : (setTimeout(run, 0) as unknown as number);
-    }
-
-    private persistToLocalStorage(): void {
-        if (!this.storageKey || !this.sessionId || !this.dirty) return;
-        try {
-            const records = this.entries.map(record => this.serializedRecords.get(record)!);
-            localStorage.setItem(this.storageKey,
-                `{"sessionId":${JSON.stringify(this.sessionId)},"entries":[${records.join(',')}]}`);
-            this.dirty = false;
-            this.persistenceError = null;
-        } catch (error) {
-            this.persistenceError = error instanceof Error ? error.message : String(error);
-        }
-    }
-
-    private clearLocalStorage(): void {
-        if (!this.storageKey) return;
-        try {
-            localStorage.removeItem(this.storageKey);
-            this.persistenceError = null;
-        } catch (error) {
-            this.persistenceError = error instanceof Error ? error.message : String(error);
-        }
+    private flush(force:boolean):Promise<void> {
+        // Never overwrite unknown saved history after a failed read.
+        if(this.readFailed)return Promise.resolve();
+        if(this.inFlight)return this.inFlight.then(()=>this.dirty&&!this.persistenceError?this.flush(force):undefined);
+        if(!this.storageKey||!this.sessionId||!this.dirty||(!force&&Date.now()<this.retryAfter)){this.schedule();return Promise.resolve();}
+        const epoch=this.epoch;const revision=this.revision;
+        const value:SavedLogs={sessionId:this.sessionId,revision,entries:this.entries.slice()};
+        const key=this.storageKey;
+        this.inFlight=this.persistence.write(key,value).then(()=>{
+            if(epoch!==this.epoch)return;
+            this.pending=this.pending.filter(item=>item.revision>revision);
+            this.dirty=this.revision!==revision;
+            this.persistenceError=null;this.retryAfter=0;this.journalFailed=false;
+            try {
+                const journal=JSON.parse(localStorage.getItem(key)??'null') as Journal|null;
+                if(journal?.sessionId!==value.sessionId||journal.revision<=revision)localStorage.removeItem(key);
+                // Successful migration also frees the old oversized synchronous snapshot.
+                else if(journal?.sessionId===value.sessionId&&'entries' in journal)localStorage.removeItem(key);
+            }catch{/* Database history is already durable. */}
+        }).catch(error=>this.fail(error)).finally(()=>{this.inFlight=null;this.schedule();});
+        return this.inFlight;
     }
 }

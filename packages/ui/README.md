@@ -98,7 +98,7 @@ or network requests.
 `LogStore`, `LogTerminal`, and `BottomLogPanel` expose Core's bounded,
 virtualized log UI without Core stores or routes. Import `@freemocap/ui/styles.css`
 once. Create one application-owned `LogStore({storageKey: 'your-app.logs'})`.
-After fetching the backend's lifetime identity, call `store.beginSession(id)`
+After fetching the backend's lifetime identity, await `store.beginSession(id)`
 before subscribing or connecting the log stream, then call `start()` and feed
 `subscribeToLog(record => store.add(record))`. Expose the server `LogHub.session_id`
 through the application's existing status endpoint. The same identity survives
@@ -113,10 +113,20 @@ unsubscribe, remove that listener, and call `dispose()`. Panel visibility does
 not own any of these operations; collection continues while the panel is hidden.
 
 Persistence retains the full 10,000-record bounded history, not a smaller tail.
-Record JSON is cached incrementally; periodic writes still run at idle time.
-Browser storage quotas or disabled storage can prevent persistence: surface
-`store.persistenceError` in the application instead of claiming reload safety.
-Live collection continues after a storage failure and the next flush retries.
+IndexedDB stores the full snapshot asynchronously, coalescing new records over
+500 ms. A small synchronous unload journal (at most 250,000 characters) covers
+records not yet committed. `persistNow()` writes that journal immediately and
+returns a promise for the database flush; await it when confirming persistence
+outside browser unload. Existing same-session localStorage history migrates once
+and is removed after a successful database commit. No smaller history tail is
+silently substituted when storage is full.
+
+Surface `store.persistenceError` when browser storage is unavailable. Failed
+background writes back off for 60 seconds; a failed journal is not repeatedly
+written until the database recovers. Oversized uncommitted bursts require the
+async flush to complete before they are reload-safe. A failed database read
+preserves unknown saved history and requires reload to retry; live collection
+continues.
 Omit `storageKey` for memory-only history. `log_id` values deduplicate replayed
 history. This viewer storage is separate from durable training logs/artifacts.
 
@@ -277,3 +287,45 @@ existing pan/zoom controls rather than automatically shrinking the text.
 
 ### Workspace composition
 `WorkspaceTabs` supplies controlled keyboard-navigable tabs (arrows/Home/End). Applications own panel IDs, accessible labels, mounted lifetimes and persistence. `WorkspaceToolbar` holds persistent application-owned commands and concise consequential facts. `RunActivity` displays caller-supplied stage, elapsed time, optional progress and update age; after 30 seconds without an update it reports stale telemetry and stops pulsing. This describes telemetry freshness, not task failure. Reduced-motion preference disables the pulse. These components use existing Skull tokens via `@freemocap/ui/styles.css`; scope domain layout rules rather than overriding generic headers/buttons.
+
+
+### Large dataset galleries
+
+Members-mode `ImageCatalog` renders visible rows plus two overscan rows rather
+than mounting every image. Cards have bounded width and fixed row geometry;
+thumbnail loading does not move the scroll position. Surviving image IDs anchor
+the viewport when the supplied membership changes.
+
+Optional `selectedIds` and `onSelectionChange(ids)` control checkbox selection
+for a bulk action, independently of persisted membership. Shift-click selects a
+range in the supplied order. The application sends one bulk mutation and updates
+membership only from its authoritative result. `DatasetImageItem.facts` displays
+application-owned scores or help controls; SDK does not calculate quality.
+`removed: true` retains a removed row in place, labels it Removed, excludes it
+from the member count, disables removal/selection and clears it from the bulk
+selection. The application decides when an explicit refresh drops those rows.
+Keep thumbnail URLs tied to immutable label artifacts, and memoize item
+preparation instead of rebuilding the catalog for every playback tick.
+
+### Spherical coverage
+
+`SphericalCoverageViewer` renders an STL and caller-supplied counts. Supply
+`meshUrl`, `meshScale` (authored units to display units), `meshCenter` (in display
+units), and a positive enclosing `radius` in those same units. The model transform
+is `authoredPosition * meshScale - meshCenter`; the SDK does not infer units or
+poses. SkellyClicker supplies metres at this boundary, independently of the
+millimetre convention used by other motion-capture interfaces.
+
+`counts` has `azimuthBins * zBins` nonnegative integer entries in z-major order.
+Unit-sphere z bands span [-1, 1]; azimuth spans [0, 2π) about +Z, starting at +X
+toward +Y. The application owns equal-area bin assignment, eligibility, unknown
+viewpoints, pool selection, and a numeric legend. Zero is gray; positive counts
+range from teal at 1 to gold at the maximum (a maximum of 1 is gold).
+
+The near hemisphere is translucent; the far hemisphere is culled to avoid mixing
+two cell counts in one color. Orbit to inspect the other side. Geometry is reused
+between count updates; orbit does not fetch the mesh or modify counts. Rendering
+is on demand, with resource disposal on unmount. `onViewRotation` receives a
+row-major 3×3 object-to-camera rotation with no translation. Camera coordinates
+are +X right, +Y up, -Z forward. This callback supports application-owned angular
+projections; it does not prescribe a projection or histogram algorithm.
