@@ -37,8 +37,9 @@ export function MetricSeriesChart({series,color='var(--color-info)',height=180}:
             .style('font-family','var(--font-mono)').style('font-size','11px');
     },[]);
     const last=series.points.at(-1);
+    const latestValue=last?`${d3.format('.5~g')(last.value)} ${series.unit}`:'Waiting for data';
     return <section className="sdk-metric-card" aria-label={series.label}>
-        <header><strong>{series.label}</strong><span>{last?`${d3.format('.5~g')(last.value)} ${series.unit}`:'Waiting for data'}</span></header>
+        <header className="sdk-metric-heading"><strong title={series.label}>{series.label}</strong><span title={latestValue}>{latestValue}</span></header>
         <div className="sdk-metric-plot" style={{height}}><BaseD3ChartView ariaLabel={`${series.label} by ${series.step_label}, ${series.unit}`} initChart={initChart} updateChart={updateChart} margin={MARGIN}/></div>
         <footer>{last?`${series.step_label} ${last.step}`:'No observations yet'}
             {series.omitted_points>0&&<span>Showing latest {series.points.length} observations · {series.omitted_points} earlier</span>}
