@@ -29,3 +29,5 @@ export {ImageCatalog,ImageSelectionToggle,type ImageCatalogProps,type ImageCatal
 export {MetricSeriesChart,type MetricSeriesChartProps} from './charts/MetricSeriesChart';
 export {SamplePreviewGrid,type SamplePreviewGridProps} from './charts/SamplePreviewGrid';
 export {SphericalCoverageViewer,type SphericalCoverageViewerProps} from './coverage/SphericalCoverageViewer';
+
+export {AnnotationImage,ImagePreview} from './browser/ImagePreview';
