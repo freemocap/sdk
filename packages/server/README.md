@@ -34,11 +34,13 @@ Run `uv sync --group dev` and `uv run pytest`. The conformance tests additionall
 
 For explicit desktop resources, `python -m freemocap_sdk.bundle` accepts repeatable
 `--add-data SOURCE:DEST` mappings and forwards each intact to PyInstaller. For
-example, `--add-data "src/example/workers/train.py:example/workers"` includes a
+example, `--add-data "/absolute/source/train.py:example/workers"` includes a
 Python worker as a resource for a separate interpreter. The application chooses
 the resources and destination; the SDK adds no trainer-specific files. Quote the
 whole mapping when paths contain spaces. Existing `--collect-data PACKAGE`
-remains available for package data discovery.
+remains available for package data discovery. Resolve source paths to absolute
+paths before invoking the command: PyInstaller resolves relative source paths
+against the generated spec directory, which is the supplied `--work` directory.
 
 
 ## Recording-level pipeline execution
