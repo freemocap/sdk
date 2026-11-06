@@ -32,6 +32,14 @@ if __name__ == "__main__":
 
 Run `uv sync --group dev` and `uv run pytest`. The conformance tests additionally use installed Core/SkellyCam when available and otherwise skip; the package itself imports neither. Source hashes and extraction paths are recorded in the repository's `provenance/` directory.
 
+For explicit desktop resources, `python -m freemocap_sdk.bundle` accepts repeatable
+`--add-data SOURCE:DEST` mappings and forwards each intact to PyInstaller. For
+example, `--add-data "src/example/workers/train.py:example/workers"` includes a
+Python worker as a resource for a separate interpreter. The application chooses
+the resources and destination; the SDK adds no trainer-specific files. Quote the
+whole mapping when paths contain spaces. Existing `--collect-data PACKAGE`
+remains available for package data discovery.
+
 
 ## Recording-level pipeline execution
 

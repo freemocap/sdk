@@ -15,6 +15,8 @@ def main() -> None:
     parser.add_argument("--work", type=Path, required=True, help="Ignored build scratch directory")
     parser.add_argument("--collect-data", action="append", default=[], metavar="PACKAGE",
                         help="Include package data files; repeat for multiple packages")
+    parser.add_argument("--add-data", action="append", default=[], metavar="SOURCE:DEST",
+                        help="Pass an explicit resource mapping to PyInstaller; repeat for multiple resources")
     args = parser.parse_args()
     if not args.entrypoint.is_file():
         parser.error("Entrypoint does not exist")
@@ -30,6 +32,7 @@ def main() -> None:
                     # Preserve package-relative resources [@pyinstallerData2026].
                     *[arg for package in dict.fromkeys(["freemocap_sdk", *args.collect_data])
                       for arg in ("--collect-data", package)],
+                    *[arg for resource in args.add_data for arg in ("--add-data", resource)],
                     str(args.entrypoint.resolve())], check=True)
 
 
