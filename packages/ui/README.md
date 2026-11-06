@@ -56,7 +56,7 @@ has no Electron/Tauri dependency and never changes the path itself.
 `SidebarProcessingAction({text, onClick, disabled?, description?, iconClass?})`
 exposes Core's `ProcessMocapPanel` full-width accent action, with its existing
 `processmocap-icon`, button classes, theme colors and a 44px minimum target.
-Omit `description` when the application keeps explanatory copy behind info.
+Optional `description` opens from the existing named help icon; it is never rendered as permanent explanatory copy.
 
 | Core source under `freemocap-ui/src/` | Public SDK surface |
 | --- | --- |
@@ -87,8 +87,10 @@ The app owns parsing and validation, including empty or incomplete input.
 Set `collapsible` and optional `defaultOpen` for a disclosure. `Legend` takes
 `label`, `items: {label, color, description?}[]`, optional `note`, and optional
 `details` content. Supply actual scene colors and application-owned meanings;
-every swatch has a visible label. Details are available in a disclosure rather
-than a permanent paragraph over the scene. These controls perform no processing
+every swatch has a visible label. `NumberField` and `ControlSection` descriptions,
+and `Legend` notes/details, open through `AnchoredInfo`. Static explanations
+belong behind help icons; action labels, factual values, progress, and actual
+errors remain visible. These controls perform no processing
 or network requests.
 
 ## Application logs

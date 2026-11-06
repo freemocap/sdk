@@ -1,4 +1,5 @@
 import ButtonSm from '../components/ui-components/ButtonSm';
+import AnchoredInfo from '../components/ui-components/AnchoredInfo';
 
 export interface SidebarProcessingActionProps {
     text: string;
@@ -15,8 +16,8 @@ export function SidebarProcessingAction({text,onClick,disabled=false,description
             <div className="flex flex-row flex-1 items-center gap-1 w-full">
                 <ButtonSm text={text} iconClass={iconClass} disabled={disabled} onClick={onClick}
                     className="accent text-nowrap flex flex-row flex-1 gap-1 br-1 button sm flex-inline text-left items-center full-width primary justify-center"/>
+                {description && <AnchoredInfo title={text} text={description}/>}
             </div>
-            {description && <p className="sdk-sidebar-action-description">{description}</p>}
         </div>
     </div>;
 }
