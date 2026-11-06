@@ -49,15 +49,15 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
                 cursor, outline:active?'3px solid var(--color-info, #4ec5cf)':undefined,outlineOffset:-3,
             }}
         >
-            <div ref={containerRef} {...containerHandlers} style={{position:'absolute',inset:0,overflow:'hidden'}}>
+            <div ref={containerRef} {...containerHandlers} style={{position:'absolute',inset:0,height:showTargetCrop?'50%':'100%',overflow:'hidden'}}>
             <div style={{...zoomWrapperStyle, position: 'relative'}}>
                 <video playsInline muted
                     ref={registerVideo}
                     className="w-full h-full block"
-                    style={{ objectFit: 'contain', opacity: 0.001 }}
+                    style={{ objectFit: 'contain', objectPosition:'center top', opacity: 0.001 }}
                 />
                 <canvas ref={registerPresentation} data-video-id={videoId} className="playback-presented-image w-full h-full block"
-                    style={{position: 'absolute', inset: 0, objectFit: 'contain', background: '#000'}} />
+                    style={{position: 'absolute', inset: 0, objectFit: 'contain', objectPosition:'center top', background: '#000'}} />
             </div>
 
             </div>

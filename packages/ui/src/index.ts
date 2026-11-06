@@ -22,6 +22,6 @@ export {default as ValueSelector} from './components/ui-components/ValueSelector
 
 export {SettingFilePath, type SettingFilePathProps} from './pipeline/settings/setting-file-path';
 
-export type {PresentedFrame, PlaybackWorkspaceHandle, PlaybackPresentationProps, TargetCropBounds, TargetCropRequest, TargetCropProvider, PresentedImage, ImageControlContext} from './playback-presentation';
+export type {PresentedFrame, PlaybackWorkspaceHandle, PlaybackPresentationProps, TargetCropBounds, TargetCropRequest, TargetCropProvider, PresentedImage, ImageControlContext, PlaybackNavigationGroup} from './playback-presentation';
 
 export {ImageCatalog,ImageSelectionToggle,type ImageCatalogProps,type ImageCatalogItem,type ImageCatalogFilter,type ImageCatalogNavigation,type ImageSelectionToggleProps} from './browser/ImageCatalog';

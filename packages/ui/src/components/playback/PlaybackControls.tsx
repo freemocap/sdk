@@ -1,3 +1,4 @@
+import type {PlaybackNavigationGroup} from '../../playback-presentation';
 import TooltipSurface from '@/components/ui-components/TooltipSurface';
 import {DisplayFramerate} from './DisplayFramerate';
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -13,6 +14,7 @@ import ToggleComponent from "@/components/ui-components/ToggleComponent";
 import {CachedTimeline} from './CachedTimeline';
 
 interface PlaybackControlsProps {
+    navigationGroups?:readonly PlaybackNavigationGroup[];
     showTimingNotice?: boolean;
     playbackReady?: boolean;
     isPlaying: boolean;
@@ -60,6 +62,7 @@ function formatTimestamp(seconds: number, fps: number, format: "seconds" | "time
 }
 
 export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
+    navigationGroups,
     showTimingNotice = true,
     playbackReady = true,
     isPlaying,
@@ -307,6 +310,15 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                     />
                 </div>
 
+                {navigationGroups?.map(group=><div key={group.id} className="playback-navigation-group" role="group" aria-label={`${group.label} images`}>
+                    <span>{group.label}{group.count!==undefined&&<small>{group.count}</small>}</span>
+                    <IconButton icon="framebackward-icon" title={`Previous ${group.label.toLowerCase()} image`} ariaLabel={`Previous ${group.label.toLowerCase()} image`}
+                        disabled={!playbackReady||group.pending||!group.previous} onClick={group.previous} tooltip tooltipPortal
+                        tooltipText={`Previous ${group.label.toLowerCase()} image`} tooltipPosition="pos-top"/>
+                    <IconButton icon="frameforward-icon" title={`Next ${group.label.toLowerCase()} image`} ariaLabel={`Next ${group.label.toLowerCase()} image`}
+                        disabled={!playbackReady||group.pending||!group.next} onClick={group.next} tooltip tooltipPortal
+                        tooltipText={`Next ${group.label.toLowerCase()} image`} tooltipPosition="pos-top"/>
+                </div>)}
                 {/* Recording media source */}
                 {validSources.length >= 2 && selectedSource && onSourceChange && (
                     <div className="playback-source-switch flex bg-middark br-2 flex-row p-1 gap-1" role="group" aria-label="Video source">

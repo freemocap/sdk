@@ -100,7 +100,7 @@
 .sdk-image-card {border:1px solid #465a60; border-radius:6px; overflow:hidden; background:#152226; min-width:0;}
 .sdk-image-card.active {border-color:#75dbe5; box-shadow:0 0 0 2px #75dbe570;}
 .sdk-image-thumbnail {display:block; position:relative; width:100%; padding:0; border:0; background:#080e10; cursor:pointer;}
-.sdk-image-thumbnail img {display:block; width:100%; aspect-ratio:16/9; object-fit:contain;}
+.sdk-image-thumbnail img {display:block; width:100%; height:auto;}
 .sdk-image-camera {position:absolute; top:4px; left:4px; padding:2px 5px; border-radius:3px; background:#10262ddd; color:#f1f8fa; font-size:10px; text-transform:capitalize;}
 .sdk-image-card-body {display:flex; flex-direction:column; gap:5px; padding:7px; font-size:11px;}
 .sdk-image-card-body strong {font-size:11px; overflow-wrap:anywhere;}
@@ -108,3 +108,15 @@
 .sdk-image-card-body .sdk-image-selection .button {width:100%; min-height:30px; justify-content:center; padding:4px;}
 .sdk-image-card-body .sdk-image-selection .text {font-size:11px;}
 .sdk-image-empty {padding:20px 12px; color:var(--color-text-muted,#afbcbc); font-size:12px; text-align:center;}
+
+.sdk-log-visibility .button {border:1px solid var(--color-border-control,#59696d); background:var(--color-bg-secondary,#263438); color:var(--color-text-primary,#eef4f4); box-shadow:0 2px 7px #0006;}
+.sdk-image-catalog-actions {display:flex; flex-wrap:wrap; gap:6px;}
+.sdk-image-thumbnail-unavailable {display:flex; aspect-ratio:16/9; align-items:center; justify-content:center; color:#aab8bf; font-size:11px;}
+.playback-navigation-group {display:flex; align-items:center; gap:3px; padding:3px 5px; border:1px solid #5d858d; background:#203c42; border-radius:5px; flex-shrink:0;}
+.playback-navigation-group>span {display:flex; flex-direction:column; align-items:center; padding:0 3px; font-size:11px; font-weight:600; color:#e6f6f8;}
+.playback-navigation-group small {font-size:9px; color:#accbd1;}
+
+.sdk-image-include-all.button {width:100%; min-height:36px; justify-content:center; padding:7px 12px; border:1px solid #77c9b4; border-radius:5px; background:#28594e; color:#f2fff9; font-weight:600;}
+.sdk-image-include-all.button p {color:inherit;}
+.sdk-image-include-all.button .icon {background-color:currentColor;}
+.sdk-image-include-all.button:disabled {opacity:.55;}

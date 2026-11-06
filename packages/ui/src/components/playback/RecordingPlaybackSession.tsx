@@ -19,7 +19,7 @@ interface Props extends PlaybackPresentationProps {recording: RecordingSelection
     pointCloud?: import('../viewport3d/point-cloud-format').PointCloudPlayback;
     availableSources: PlaybackBundle['videos']['sources'] | null; selectedSource: string | null;
     setSelectedSource: (source: string) => void}
-const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, availableSources, selectedSource, setSelectedSource, showTimingNotice, pointCloud, controlsRef, onPresentedFrame, getTargetCrop, renderImageControls, activeVideoId}) => {
+const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, availableSources, selectedSource, setSelectedSource, showTimingNotice, pointCloud, controlsRef, onPresentedFrame, getTargetCrop, renderImageControls, activeVideoId, navigationGroups}) => {
     const {t} = useTranslation();
     const {bundle, reloadManifest} = usePlaybackResources();
     const [settings, setSettings] = useState<CameraSettings>({columns: null, show3dView: true, layoutDirection: 'horizontal'});
@@ -137,6 +137,7 @@ const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, available
 
                         {controller.error && <p role="alert" className="text-error">{controller.error}</p>}
                         <PlaybackControls
+                            navigationGroups={navigationGroups}
                             showTimingNotice={showTimingNotice ?? (recording !== null && videos.length > 0)}
                             playbackReady={playbackReady}
                             isPlaying={controller.isPlaying}

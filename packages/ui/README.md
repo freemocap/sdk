@@ -160,8 +160,8 @@ source frame, and image dimensions in `TargetCropRequest`. Return null when that
 projection is unavailable. Applications own geometry, padding, and provenance;
 the SDK clamps intersecting bounds and clears invalid crops. Each close-up draws
 from the same committed bitmap as the full camera image, without another decoder,
-clock, network request, or pixel readback. Each camera has a larger floating close-up with a draggable header and aspect-preserving
-resize corner. Pointer capture and keyboard arrows move/resize it within its camera;
+clock, network request, or pixel readback. Each camera has a larger floating close-up with image dragging and aspect-preserving
+resize handles on all four edges and four corners, without a visible header. Pointer capture and keyboard arrows move/resize it within its camera;
 placement survives frame and source changes and clamps on parent resize. Interactions
 do not pan the underlying image. Updated providers also refresh the paused committed frame.
 
@@ -181,3 +181,26 @@ application's saved membership. Included and Generated modes are distinct;
 focused F/G shortcuts use those supplied IDs and never wrap or invent membership.
 The application owns catalog routes, persistence, conflicts, selection semantics,
 thumbnail resources, and exact confirmed-frame seeking.
+
+
+`BottomLogPanel` collapses to zero height by dragging its divider down or using
+Hide logs. Its floating Logs button restores the previous size without reserving
+a log row; collection/history remain in the application-owned store.
+
+`PlaybackWorkspace.navigationGroups` places app-supplied previous/next actions
+in the playback toolbar. Each `PlaybackNavigationGroup` supplies `id`, `label`,
+optional `count`, `pending`, `previous` and `next`; missing callbacks disable
+boundaries. Applications provide separate Labeled and Included targets using
+saved membership and confirmed seeking. Omit catalog navigation to avoid a
+duplicate sidebar workflow. `ImageCatalog.onIncludeAll` exposes the full-batch
+action with `includeAllPending`/`includeAllDisabled`; it never applies only to
+filtered entries. The application owns atomic initialization and persistence.
+Null or failed thumbnail URLs show Target unavailable instead of a false crop.
+
+
+When close-ups are enabled, the full camera image is top-aligned in the upper
+region and the untouched close-up starts at the bottom. The close-up viewport
+matches the actual crop aspect ratio, filling the image surface without added
+letterboxing or clipping the supplied target bounds. The fixed backing canvas
+avoids per-frame buffer resizing; its displayed aspect restores source pixel
+proportions. Manual placement/width persist while parent bounds remain enforced.

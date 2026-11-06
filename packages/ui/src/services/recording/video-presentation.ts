@@ -77,9 +77,10 @@ export class VideoPresentation {
         canvas.dataset.presentedFrame=String(index);canvas.dataset.presentationEpoch=this.presentationEpoch;
         canvas.dataset.presentedMediaTime=String(time);
         if(!bounds)return;
-        const scale=Math.min(canvas.width/bounds.width,canvas.height/bounds.height);
-        const width=bounds.width*scale,height=bounds.height*scale;
-        context.drawImage(image,bounds.x,bounds.y,bounds.width,bounds.height,(canvas.width-width)/2,(canvas.height-height)/2,width,height);
+        // Match the displayed viewport to these exact source bounds. Filling the
+        // fixed backing surface avoids per-frame buffer resize and adds no UI bars.
+        canvas.parentElement?.style.setProperty('--target-aspect',String(bounds.width/bounds.height));
+        context.drawImage(image,bounds.x,bounds.y,bounds.width,bounds.height,0,0,canvas.width,canvas.height);
     }
     /** Refresh a newly supplied projection while paused, using the already committed image. */
     refreshCrops():void {

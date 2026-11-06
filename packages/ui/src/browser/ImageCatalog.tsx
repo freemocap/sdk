@@ -1,4 +1,4 @@
-import {useState,type KeyboardEvent} from 'react';
+import {useState,type KeyboardEvent,type ReactNode} from 'react';
 import ButtonSm from '../components/ui-components/ButtonSm';
 import SubactionHeader from '../components/ui-components/SubactionHeader';
 
@@ -17,7 +17,7 @@ export function ImageSelectionToggle({included,pending,disabled,error,onToggle,l
 }
 export type ImageCatalogFilter={inclusion:'all'|'included'|'excluded';camera:string|null};
 export interface ImageCatalogItem {
-    id:string;groupId:string;groupLabel:string;camera:string;thumbnailUrl:string;label:string;detail?:string;
+    id:string;groupId:string;groupLabel:string;camera:string;thumbnailUrl:string|null;label:string;detail?:string;
     included:boolean;pending?:boolean;error?:string;
     sourceFrameNumber?:number;cameraId?:string;momentId?:string;
 }
@@ -26,10 +26,17 @@ export interface ImageCatalogNavigation {
     previousId?:string;nextId?:string;pending?:boolean;
 }
 export interface ImageCatalogProps {
+    actions?:ReactNode;
+    onIncludeAll?:()=>void;includeAllPending?:boolean;includeAllDisabled?:boolean;
     items:readonly ImageCatalogItem[];activeId?:string;onNavigate:(id:string)=>void;onToggle:(id:string)=>void;
     pending?:boolean;error?:string;onFilterChange?:(filter:ImageCatalogFilter)=>void;navigation?:ImageCatalogNavigation;
 }
-export function ImageCatalog({items,activeId,onNavigate,onToggle,pending,error,onFilterChange,navigation}:ImageCatalogProps) {
+function CatalogThumbnail({src,label}:{src:string|null;label:string}) {
+    const [failed,setFailed]=useState<string|null>(null);
+    return src&&src!==failed?<img src={src} alt={label} loading="lazy" decoding="async" onError={()=>setFailed(src)}/>
+        :<span className="sdk-image-thumbnail-unavailable">Target unavailable</span>;
+}
+export function ImageCatalog({items,activeId,onNavigate,onToggle,pending,error,onFilterChange,navigation,actions,onIncludeAll,includeAllPending,includeAllDisabled}:ImageCatalogProps) {
     const [filter,setFilter]=useState<ImageCatalogFilter>({inclusion:'all',camera:null});
     const change=(patch:Partial<ImageCatalogFilter>)=>{const next={...filter,...patch};setFilter(next);onFilterChange?.(next);};
     const included=items.filter(item=>item.included).length;
@@ -48,6 +55,10 @@ export function ImageCatalog({items,activeId,onNavigate,onToggle,pending,error,o
     return <section className="sdk-image-catalog" aria-label="Generated images" tabIndex={0} onKeyDown={keys}>
         <SubactionHeader text="Image selection"/>
         <div className="sdk-image-catalog-counts"><strong>{included}<small> included</small></strong><span>{items.length} generated images</span></div>
+        {onIncludeAll&&<ButtonSm className="sdk-image-include-all" text={includeAllPending?'Saving…':'Include all'} iconClass="checkUpdate-icon" textColor=""
+            title="Include all generated images in this batch" disabled={pending||includeAllPending||includeAllDisabled||!items.length||included===items.length}
+            ariaBusy={!!includeAllPending} onClick={onIncludeAll}/>}
+        {actions&&<div className="sdk-image-catalog-actions">{actions}</div>}
         {navigation && <div className="sdk-image-navigation">
             <div className="sdk-image-filter" role="group" aria-label="Frame stepping mode">
                 {(['included','generated'] as const).map(mode=><ButtonSm key={mode} text={mode==='included'?'Included frames':'All generated'}
@@ -79,7 +90,7 @@ export function ImageCatalog({items,activeId,onNavigate,onToggle,pending,error,o
                     {group.map(item=><article key={item.id} className={`sdk-image-card ${activeId===item.id?'active':''}`} data-image-id={item.id}>
                         <button className="sdk-image-thumbnail" aria-label={`Show ${item.label}`} aria-current={activeId===item.id?'true':undefined}
                             disabled={pending||navigation?.pending} onClick={()=>onNavigate(item.id)}>
-                            <img src={item.thumbnailUrl} alt={item.label} loading="lazy" decoding="async"/>
+                            <CatalogThumbnail src={item.thumbnailUrl} label={item.label}/>
                             <span className="sdk-image-camera">{item.camera}</span>
                         </button>
                         <div className="sdk-image-card-body"><strong>{item.label}</strong>{item.detail&&<small>{item.detail}</small>}

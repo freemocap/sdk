@@ -16,6 +16,7 @@ export interface PlaybackWorkspaceHandle {
     seekFrame(localFrameIndex:number): Promise<PresentedFrame | null>;
 }
 export interface PlaybackPresentationProps {
+    navigationGroups?:readonly PlaybackNavigationGroup[];
     renderImageControls?: (context:ImageControlContext)=>ReactNode;
     activeVideoId?:string;
     getTargetCrop?: TargetCropProvider;
@@ -41,4 +42,9 @@ export interface ImageControlContext {
     pause():void;
     /** Read on click: null while seeking or before a committed image exists. */
     getPresentedFrame():PresentedImage|null;
+}
+
+/** Application-supplied navigation targets; the SDK does not infer labeled/included membership. */
+export interface PlaybackNavigationGroup {
+    id:string;label:string;previous?:()=>void;next?:()=>void;pending?:boolean;count?:number;
 }
