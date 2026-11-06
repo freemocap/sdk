@@ -2,7 +2,7 @@ import {formatProcessingDuration} from './duration';
 import type {TaskOperation} from '@freemocap/client';
 
 const STATUS_LABELS: Record<TaskOperation['status'], string> = {
-    waiting: 'Waiting', running: 'Running', complete: 'Complete', failed: 'Failed', cancelled: 'Stopped',
+    waiting: 'Waiting', running: 'Running', complete: 'Complete', failed: 'Failed', cancelled: 'Stopped', blocked: 'Blocked',
 };
 
 /** One backend operation: its state, counts with units, and timing. No client-side scheduling or aggregate percentage. */

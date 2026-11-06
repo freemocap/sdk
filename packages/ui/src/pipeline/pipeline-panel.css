@@ -23,7 +23,7 @@
 .sdk-sidebar-action-description {margin:4px 2px 0;color:var(--color-text-muted);font-size:12px;line-height:1.4;}
 .sdk-pipeline-panel .pg-node-head {height:auto;padding:8px 10px;align-items:center;}
 .sdk-pipeline-panel .pg-node-title,.sdk-pipeline-panel .pg-port-name,.sdk-pipeline-panel .pg-pill,.sdk-pipeline-panel .pg-bar-text,.sdk-pipeline-panel .settings-summary-chip {white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;height:auto;}
-.sdk-pipeline-panel .pg-node-title {line-height:1.4;}
+.sdk-pipeline-panel .pg-node-title {font-size:16px;line-height:1.4;}
 .sdk-pipeline-panel .pg-head-button {flex-shrink:0;}
 .sdk-pipeline-panel .pg-port {padding-top:4px;padding-bottom:4px;}
 .sdk-pipeline-panel .pg-port-name {min-width:0;}

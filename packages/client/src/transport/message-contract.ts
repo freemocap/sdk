@@ -327,9 +327,9 @@ export type TaskOperationItem = z.infer<typeof TaskOperationItemSchema>;
 export const TaskOperationSchema = z.object({
   operation_id: z.string().min(1), label: z.string().min(1),
   stage:z.string().nullable().optional(), effects:z.array(z.enum(["read_record","read_live","write_disk","display"])).optional(),
-  dependencies:z.array(z.string()).optional(), waiting_for:z.array(z.string()).optional(),
+  dependencies:z.array(z.string()).optional(), waiting_for:z.array(z.string()).optional(), blocked_by:z.array(z.string()).optional(),
   files_read:z.array(z.string()).optional(), files_written:z.array(z.string()).optional(),
-  status: z.enum(['waiting', 'running', 'complete', 'failed', 'cancelled']),
+  status: z.enum(['waiting', 'running', 'complete', 'failed', 'cancelled', 'blocked']),
   progress_fraction: z.number().min(0).max(1).nullable(), detail: z.string(),
   completed: z.number().int().nonnegative().nullable(), total: z.number().int().nonnegative().nullable(),
   unit: z.string().nullable(),

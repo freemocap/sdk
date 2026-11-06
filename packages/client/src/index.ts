@@ -23,3 +23,5 @@ export function createClient(options:ClientOptions){
  const stream=new TransportService({url:url.href,socketFactory:options.socketFactory});
  return {...http,stream,close(){stream.disconnect();}};
 }
+
+export * from './transport/pipeline-snapshot.js';

@@ -1,4 +1,4 @@
-import React, {useCallback, useState} from 'react';
+import React, {useCallback, useState, useImperativeHandle} from 'react';
 import {useTranslation} from 'react-i18next';
 import {ResizablePanel as Panel, ResizablePanelGroup as PanelGroup, ResizableHandle as PanelResizeHandle} from '@/layout/ResizablePanels';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
@@ -12,12 +12,14 @@ import type {PlaybackManifest} from '@freemocap/client/recording';
 import {usePlaybackResources, type CameraSettings, type RecordingSelection, type PlaybackBundle} from '@/playback-resources';
 import type {VideoEntry} from '@/services/recording/browser-video';
 
-interface Props {recording: RecordingSelection | null; videos: VideoEntry[];
+import type {PlaybackPresentationProps} from '../../playback-presentation';
+
+interface Props extends PlaybackPresentationProps {recording: RecordingSelection | null; videos: VideoEntry[];
     showTimingNotice?: boolean;
     pointCloud?: import('../viewport3d/point-cloud-format').PointCloudPlayback;
     availableSources: PlaybackBundle['videos']['sources'] | null; selectedSource: string | null;
     setSelectedSource: (source: string) => void}
-const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, availableSources, selectedSource, setSelectedSource, showTimingNotice, pointCloud}) => {
+const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, availableSources, selectedSource, setSelectedSource, showTimingNotice, pointCloud, controlsRef, onPresentedFrame, getTargetCrop}) => {
     const {t} = useTranslation();
     const {bundle, reloadManifest} = usePlaybackResources();
     const [settings, setSettings] = useState<CameraSettings>({columns: null, show3dView: true, layoutDirection: 'horizontal'});
@@ -38,7 +40,8 @@ const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, available
     }, []);
     const playbackReady = !settings.show3dView || !bundle?.manifest || readyManifest === bundle.manifest;
     const controller = usePlaybackController({playbackReady, bundle, reloadManifest, videos,
-        recordingId: activeRecordingName, recordingParentDirectory: activeRecordingBaseDirectory});
+        recordingId: activeRecordingName, recordingParentDirectory: activeRecordingBaseDirectory, onPresentedFrame, getTargetCrop});
+    useImperativeHandle(controlsRef,()=>({pause:controller.pause,getPresentedFrame:controller.getPresentedFrame,seekFrame:controller.seekPresentedFrame}),[controller.pause,controller.getPresentedFrame,controller.seekPresentedFrame]);
     return (
         <div className="playback-mode-main-container flex flex-col flex-1 min-h-0 pos-rel">
             <div className="flex flex-col flex-1 overflow-hidden">
@@ -158,7 +161,7 @@ const RecordingPlaybackSession: React.FC<Props> = ({recording, videos, available
                             onToggleLoop={controller.handleToggleLoop}
                             availableSources={availableSources}
                             selectedSource={selectedSource}
-                            onSourceChange={setSelectedSource}
+                            onSourceChange={source=>{controller.invalidatePresentation();setSelectedSource(source);}}
                         />
                     </div>
                 </ErrorBoundary>

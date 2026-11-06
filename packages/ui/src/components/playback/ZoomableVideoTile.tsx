@@ -11,6 +11,8 @@ interface ZoomableVideoTileProps {
     hasError: boolean;
     setVideoRef: PlaybackController['setVideoRef'];
     setPresentationRef: PlaybackController['setPresentationRef'];
+    showTargetCrop:boolean;
+    setCropRef:PlaybackController['setCropRef'];
     setFrameOverlayRef: PlaybackController['setFrameOverlayRef'];
 }
 
@@ -22,26 +24,26 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
     hasError,
     setVideoRef,
     setPresentationRef,
-    setFrameOverlayRef,
+    setFrameOverlayRef, showTargetCrop, setCropRef,
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const registerVideo = useCallback((element: HTMLVideoElement | null): void => {
         setVideoRef(videoId, element);
     }, [videoId, setVideoRef]);
     const registerPresentation = useCallback((canvas: HTMLCanvasElement | null): void => setPresentationRef(videoId, canvas), [videoId, setPresentationRef]);
+    const registerCrop=useCallback((canvas:HTMLCanvasElement|null)=>setCropRef(videoId,canvas),[videoId,setCropRef]);
     const { zoomWrapperStyle, cursor, containerHandlers } = useZoomTransform(containerRef);
     const { t } = useTranslation();
 
     return (
         <div
-            ref={containerRef}
             className="w-full h-full overflow-hidden pos-rel"
             style={{
                 backgroundColor: '#000',
                 cursor,
             }}
-            {...containerHandlers}
         >
+            <div ref={containerRef} {...containerHandlers} style={{position:'absolute',inset:0,bottom:showTargetCrop?'min(128px, 30%)':0,overflow:'hidden'}}>
             <div style={{...zoomWrapperStyle, position: 'relative'}}>
                 <video playsInline muted
                     ref={registerVideo}
@@ -52,6 +54,11 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
                     style={{position: 'absolute', inset: 0, objectFit: 'contain', background: '#000'}} />
             </div>
 
+            </div>
+            {showTargetCrop && <figure className="playback-target-closeup" style={{margin:0}} aria-label={`${filename} target close-up`}>
+                <canvas ref={registerCrop} width={440} height={188} data-video-id={videoId} data-crop-status="unavailable"/>
+                <figcaption>Target close-up</figcaption>
+            </figure>}
             {hasError && (
                 <div className="pos-abs inset-0 flex flex-col items-center justify-center gap-1 p-4 text-center z-5" style={{
                     backgroundColor: 'rgba(0, 0, 0, 0.85)',
@@ -75,7 +82,7 @@ export const ZoomableVideoTile: React.FC<ZoomableVideoTileProps> = ({
                     />
 
                     <div title={filename} className="pos-abs bottom-6 left-6 z-10" style={{
-                        maxWidth: 'calc(100% - 12px)', boxSizing: 'border-box',
+                        maxWidth: showTargetCrop ? 'calc(58% - 18px)' : 'calc(100% - 12px)', boxSizing: 'border-box',
                         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                         backgroundColor: 'rgba(0, 0, 0, 0.75)',
                         color: '#ccc', padding: '2px 8px', borderRadius: '3px',

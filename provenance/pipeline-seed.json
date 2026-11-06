@@ -1,0 +1,19 @@
+{
+  "core_revision": "3ae9842d896085e7d05603e279fa0a53502122c1",
+  "sources": {
+    "definition.py": {
+      "source": "freemocap/core/pipeline/dataflow/definition.py",
+      "sha256": "fcbcdc6d18023cc9ef19334821249468dc5ed51a112e916d2a00f3289d12aeb2"
+    },
+    "executor.py": {
+      "source": "freemocap/core/pipeline/dataflow/recording_executor.py",
+      "sha256": "02bb10e8e7e25a3fc4fdf6768b1c1a360803df57d39ddc1462502479b426edc2"
+    },
+    "progress.py": {
+      "source": "freemocap/core/pipeline/posthoc/progress_messages.py",
+      "sha256": "ef9ace9bd1a2714b55a6554a0a12cd6d814187907b91d055be6c7919792b6b6a",
+      "scope": "ItemProgressSnapshot and OperationProgressSnapshot"
+    }
+  },
+  "adaptation": "Core structural compiler and resource-bounded recording scheduler extracted with generic imports; no Core runtime dependency. APP owns admitted job/thread, handlers and publication. SDK synchronous PipelineRun, isolated observers, retained registry and existing-connection full-snapshot forwarder; one coalesced pending state per run. Explicit new blocked/blocked_by status; cancellation distinct from handler failure; all validated required outputs complete despite late cancellation, real failure wins. Reporting is not a cancellation checkpoint. Client validates pipeline_snapshot version1 with nested snapshot and matching envelope sequence."
+}

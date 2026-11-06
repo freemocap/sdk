@@ -129,3 +129,36 @@ Install React 19, React DOM 19 and `@freemocap/client` alongside this package. D
 Both worker files are emitted beside `dist/index.js` and referenced with `new URL(..., import.meta.url)`. A bundler must preserve or bundle those assets. For Vite linked-package development, exclude `@freemocap/ui` from dependency prebundling if it relocates the module away from these assets. Include the entire `dist/` directory when packing; do not copy just the entry JavaScript file.
 
 This extraction retains Core's single active viewport-worker design. Multiple simultaneous PlaybackWorkspace instances and server-side rendering are not supported. Applications must validate their actual resource mapping, geometry conversions and native media playback together.
+
+
+## Confirmed playback control
+
+`PlaybackWorkspace` accepts optional `controlsRef` and `onPresentedFrame` props.
+The exported `PlaybackWorkspaceHandle` provides `pause()`,
+`getPresentedFrame(): PresentedFrame | null`, and
+`seekFrame(localFrameIndex): Promise<PresentedFrame | null>`.
+
+A `PresentedFrame` contains `recording` (`id`, optional `parentDirectory`),
+`mediaSource`, `localFrameIndex`, `sourceFrameNumber`, `timestampSeconds`, and
+`presentationEpoch`. It describes an image group committed to every camera canvas.
+Source frame/time come from the saved media timeline, never an assumed offset or
+nominal FPS calculation. Use the application's exact integer timestamp table when
+saving scientific labels; `timestampSeconds` locates display only.
+
+Seek/source change/unmount invalidate the snapshot. `seekFrame` pauses and resolves
+only after matching images are committed, or returns null for supersession/failure.
+Call `getPresentedFrame()` when saving a selection; a requested slider position or
+an earlier callback does not establish what is currently displayed. The transient
+epoch prevents old presentation callbacks from identifying a new source session.
+
+
+`PlaybackWorkspace` starts with valid annotated videos when available, otherwise
+uses the recording's preferred source. A manual Raw choice lasts for the current
+recording session. Its optional `getTargetCrop(request)` prop supplies preloaded
+source-image pixel bounds for the exact recording, camera filename, media source,
+source frame, and image dimensions in `TargetCropRequest`. Return null when that
+projection is unavailable. Applications own geometry, padding, and provenance;
+the SDK clamps intersecting bounds and clears invalid crops. Each close-up draws
+from the same committed bitmap as the full camera image, without another decoder,
+clock, network request, or pixel readback. The bottom close-up area keeps the full
+image unobscured. Updated providers also refresh the paused committed frame.

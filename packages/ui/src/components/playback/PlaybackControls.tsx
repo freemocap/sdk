@@ -307,12 +307,13 @@ export const PlaybackControls: React.FC<PlaybackControlsProps> = ({
                     />
                 </div>
 
-                {/* Source Switcher (freemocap-only) */}
+                {/* Recording media source */}
                 {validSources.length >= 2 && selectedSource && onSourceChange && (
-                    <div className="flex bg-middark br-2 flex-row p-1 gap-1">
+                    <div className="playback-source-switch flex bg-middark br-2 flex-row p-1 gap-1" role="group" aria-label="Video source">
                         {["annotated", "synchronized"].map((src) => (
                             <button
                                 key={src}
+                                aria-pressed={selectedSource === src}
                                 className={`button sm br-1 ${selectedSource === src ? "selected" : ""}`}
                                 onClick={() => onSourceChange(src)}
                                 style={{textTransform: "capitalize", fontSize: "0.7rem"}}

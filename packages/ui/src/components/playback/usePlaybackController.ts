@@ -1,7 +1,8 @@
+import type {PresentedFrame, TargetCropProvider} from '../../playback-presentation';
 import {VideoPresentation} from '@/services/recording/video-presentation';
 import {BrowserVideo, type VideoEntry} from '@/services/recording/browser-video';
 import {videoFrameSeekTime, waitForSharedPresentation} from '@/services/recording/presentation-barrier';
-import {useCallback, useEffect, useRef, useState} from 'react';
+import {useCallback, useEffect, useLayoutEffect, useRef, useState} from 'react';
 import type {PlaybackSettings} from './SyncedVideoPlayer';
 import {PlaybackLabel} from '@/services/recording/playback-label';
 import type {PlaybackRun, PlaybackMedia} from '@/services/recording/playback-data';
@@ -12,10 +13,12 @@ interface UsePlaybackControllerArgs {
     bundle: Pick<PlaybackBundle, 'manifest' | 'media' | 'videos'> | null;
     reloadManifest: () => void;
     onFrameChange?: (frame: number) => void;
+    onPresentedFrame?: (frame:PresentedFrame|null)=>void;
+    getTargetCrop?: TargetCropProvider;
     playbackReady?: boolean;
 }
 
-export function usePlaybackController({videos, recordingId, recordingParentDirectory, bundle, reloadManifest, onFrameChange, playbackReady = true}: UsePlaybackControllerArgs) {
+export function usePlaybackController({videos, recordingId, recordingParentDirectory, bundle, reloadManifest, onFrameChange, onPresentedFrame, getTargetCrop, playbackReady = true}: UsePlaybackControllerArgs) {
     const [media, setMedia] = useState<PlaybackMedia[]>([]);
     const [error, setError] = useState<string | null>(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -28,6 +31,8 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const [settings, setSettings] = useState<PlaybackSettings>({showOverlays: true, timestampFormat: 'seconds'});
     const settingsRef = useRef(settings); settingsRef.current = settings;
     const presentation = useRef<VideoPresentation | null>(null);
+    const cropCanvases = useRef(new Map<string, HTMLCanvasElement>());
+    const cropProvider = useRef(getTargetCrop);cropProvider.current=getTargetCrop;
     const displayCanvases = useRef(new Map<string, HTMLCanvasElement>());
     const elements = useRef(new Map<string, HTMLVideoElement>());
     const [elementRevision, setElementRevision] = useState(0);
@@ -40,12 +45,38 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
     const pendingPresentation = useRef<number | null>(null);
     const onFrameChangeRef = useRef(onFrameChange); onFrameChangeRef.current = onFrameChange;
     const videosRef = useRef(videos); videosRef.current = videos;
+    const onPresentedFrameRef=useRef(onPresentedFrame);onPresentedFrameRef.current=onPresentedFrame;
+    const publishedFrame=useRef<PresentedFrame|null>(null);
+    const presentationIdentity=useRef<string|null>(null);
     const source = Object.entries(bundle?.videos.sources ?? {}).find(([, value]) => value.videos.some(video => video.streamUrl === videos[0]?.streamUrl));
     const leader = media.find(item => item.video_source === source?.[0] && item.video_filename === videos[0]?.filename);
     const totalFrames = leader?.timeline.frame_numbers.length ?? 0;
     const fps = leader?.nominal_fps ?? 30;
     const duration = totalFrames / fps;
     const videoKey = JSON.stringify(videos);
+    const identityKey=JSON.stringify([recordingId,recordingParentDirectory,videoKey]);
+    const identityRef=useRef(identityKey);identityRef.current=identityKey;
+    const getPresentedFrame=useCallback(():PresentedFrame|null=>{
+        const shown=presentation.current;
+        const index=shown?.index;
+        if(!recordingId||!source||!leader||!shown||index===null||index===undefined||
+            seeking.current||pendingPresentation.current!==null||presentationIdentity.current!==identityRef.current)return null;
+        const sourceFrameNumber=leader.timeline.frame_numbers[index],timestampSeconds=leader.timeline.timestamps_s[index];
+        if(!Number.isSafeInteger(sourceFrameNumber)||!Number.isFinite(timestampSeconds))return null;
+        return Object.freeze({recording:Object.freeze({id:recordingId,parentDirectory:recordingParentDirectory??undefined}),mediaSource:source[0],
+            localFrameIndex:index,sourceFrameNumber,timestampSeconds,presentationEpoch:shown.presentationEpoch});
+    },[recordingId,recordingParentDirectory,source?.[0],leader]);
+    const emitPresented=useCallback(()=>{
+        const frame=getPresentedFrame(),previous=publishedFrame.current;
+        if(frame?.presentationEpoch===previous?.presentationEpoch && frame?.localFrameIndex===previous?.localFrameIndex)return;
+        publishedFrame.current=frame;onPresentedFrameRef.current?.(frame);
+    },[getPresentedFrame]);
+    const emitPresentedRef=useRef(emitPresented);emitPresentedRef.current=emitPresented;
+    const invalidatePresentation=useCallback(()=>{
+        pendingPresentation.current=currentFrameRef.current;
+        publishedFrame.current=null;onPresentedFrameRef.current?.(null);
+    },[]);
+    useLayoutEffect(()=>{invalidatePresentation();return invalidatePresentation;},[identityKey,invalidatePresentation]);
     const fail = useCallback((failure: Error): void => {setError(failure.message); setIsPlaying(false);}, []);
     useEffect(() => {if (!playbackReady) setIsPlaying(false);}, [playbackReady]);
     useEffect(() => {setMedia(bundle?.media ?? []);}, [bundle]);
@@ -62,8 +93,20 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         if (source && !source[1].valid) {fail(new Error('Video group has incompatible frame counts. See recording resource errors.')); return;}
         if (videosRef.current.some(video => !elements.current.has(video.videoId) || !displayCanvases.current.has(video.videoId))) return;
         let active = true;
-        const presented = new VideoPresentation(new Map(videosRef.current.map(video => [video.videoId, displayCanvases.current.get(video.videoId)!])), fps);
-        presentation.current = presented;
+        const presented = new VideoPresentation(new Map(videosRef.current.map(video => [video.videoId, displayCanvases.current.get(video.videoId)!])), fps, 4, {
+            canvases:cropCanvases.current,
+            bounds:(id,index,imageWidth,imageHeight,presentationEpoch)=>{
+                if(presentationIdentity.current!==identityRef.current || !recordingId || !source)return null;
+                const video=videosRef.current.find(entry=>entry.videoId===id);
+                const timeline=bundle?.media.find(item=>item.video_source===source[0] && item.video_filename===video?.filename)?.timeline;
+                const sourceFrameNumber=timeline?.frame_numbers[index],timestampSeconds=timeline?.timestamps_s[index];
+                if(!video || !Number.isSafeInteger(sourceFrameNumber) || !Number.isFinite(timestampSeconds))return null;
+                return cropProvider.current?.({recording:{id:recordingId,parentDirectory:recordingParentDirectory??undefined},
+                    mediaSource:source[0],localFrameIndex:index,sourceFrameNumber:sourceFrameNumber!,timestampSeconds:timestampSeconds!,
+                    presentationEpoch,videoId:id,filename:video.filename,imageWidth,imageHeight})??null;
+            },
+        });
+        presentation.current = presented;presentationIdentity.current=identityKey;
         const opened = videosRef.current.map(video => {
             const element = elements.current.get(video.videoId);
             if (!element) throw new Error(`Missing video element: ${video.filename}`);
@@ -85,13 +128,14 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
             setErroredVideos(failed); setVideosReady(players.current.length);
             if (failures.length) setError(failures.join('\n'));
         });
-        return () => {active = false; opened.forEach(player => player.close()); players.current = []; presented.close(); if (presentation.current === presented) presentation.current = null;};
+        return () => {active = false; opened.forEach(player => player.close()); players.current = []; presented.close(); if (presentation.current === presented) {presentation.current = null;presentationIdentity.current=null;invalidatePresentation();}};
     }, [videoKey, totalFrames, duration, fps, recordingId, recordingParentDirectory, elementRevision, fail]);
 
     const seek = useCallback(async (frame: number): Promise<boolean> => {
         const generation = ++seekGeneration.current;
         seeking.current = true;
         presentation.current?.reset();
+        publishedFrame.current=null;onPresentedFrameRef.current?.(null);
         setIsPlaying(false);
         const target = Math.max(0, Math.min(Math.round(frame), totalFrames - 1));
         pendingPresentation.current = target;
@@ -113,7 +157,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         } catch (failure) {
             if (isCurrent()) fail(failure instanceof Error ? failure : new Error(String(failure)));
             return false;
-        } finally {if (isCurrent()) seeking.current = false;}
+        } finally {if (isCurrent()) {seeking.current = false;emitPresentedRef.current();}}
     }, [fps, totalFrames, fail]);
 
     useEffect(() => {
@@ -144,6 +188,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
                 return;
             }
             pendingPresentation.current = null;
+            emitPresentedRef.current();
             if (frame === lastPresentedFrame) {handle = requestAnimationFrame(tick); return;}
             lastPresentedFrame = frame;
             currentFrameRef.current = frame;
@@ -166,6 +211,12 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         return () => {cancelAnimationFrame(handle); leaderElement.removeEventListener('ended', ended);};
     }, [videosReady, isPlaying, isLooping, fps, totalFrames, seek, leader]);
 
+    const pause=useCallback(()=>{setIsPlaying(false);players.current.forEach(player=>player.element.pause());},[]);
+    const seekPresentedFrame=useCallback(async(localFrameIndex:number):Promise<PresentedFrame|null>=>{
+        if(!Number.isSafeInteger(localFrameIndex)||localFrameIndex<0||localFrameIndex>=totalFrames)return null;
+        if(!await seek(localFrameIndex))return null;
+        const frame=getPresentedFrame();return frame?.localFrameIndex===localFrameIndex?frame:null;
+    },[seek,getPresentedFrame,totalFrames]);
     const setVideoRef = useCallback((id: string, element: HTMLVideoElement | null): void => {
         if ((elements.current.get(id) ?? null) === element) return;
         if (element) elements.current.set(id, element); else elements.current.delete(id);
@@ -176,6 +227,11 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         if (canvas) displayCanvases.current.set(id, canvas); else displayCanvases.current.delete(id);
         setElementRevision(revision => revision + 1);
     }, []);
+    const setCropRef=useCallback((id:string,canvas:HTMLCanvasElement|null):void=>{
+        if(canvas)cropCanvases.current.set(id,canvas);else cropCanvases.current.delete(id);
+        presentation.current?.refreshCrops();
+    },[]);
+    useEffect(()=>{presentation.current?.refreshCrops();},[getTargetCrop]);
     const setFrameOverlayRef = useCallback((id: string, element: HTMLCanvasElement | null): void => {
         if (element) frameLabels.current.set(id, new PlaybackLabel(element)); else frameLabels.current.delete(id);
     }, []);
@@ -220,6 +276,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         window.addEventListener('keydown', onKey); return () => window.removeEventListener('keydown', onKey);
     }, [handlePlayPause, seek]);
     return {
+        pause,getPresentedFrame,seekPresentedFrame,invalidatePresentation,
         manifest: bundle?.manifest ?? null, setPlaybackRun, reloadManifest, error, getRecordingTime, getCachedFrames, getDisplayFps,
         seekFrame: isPlaying ? currentFrame : requestedFrame,
         isPlaying, currentFrame, totalFrames, duration, playbackRate, fps, currentTime: currentFrame / fps, settings,
@@ -230,7 +287,7 @@ export function usePlaybackController({videos, recordingId, recordingParentDirec
         handlePlaybackRateChange: setPlaybackRate,
         handleSeekToStart: (): void => {void seek(0);}, handleSeekToEnd: (): void => {void seek(totalFrames - 1);},
         handleToggleLoop: (): void => setIsLooping(value => !value),
-        setVideoRef, setPresentationRef, setFrameOverlayRef, currentFrameRef,
+        setVideoRef, setPresentationRef, setCropRef, showTargetCrop:!!getTargetCrop, setFrameOverlayRef, currentFrameRef,
     };
 }
 export type PlaybackController = ReturnType<typeof usePlaybackController>;

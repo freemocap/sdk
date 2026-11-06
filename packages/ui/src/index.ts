@@ -21,3 +21,5 @@ export {default as AnchoredInfo} from './components/ui-components/AnchoredInfo';
 export {default as ValueSelector} from './components/ui-components/ValueSelector';
 
 export {SettingFilePath, type SettingFilePathProps} from './pipeline/settings/setting-file-path';
+
+export type {PresentedFrame, PlaybackWorkspaceHandle, PlaybackPresentationProps, TargetCropBounds, TargetCropRequest, TargetCropProvider} from './playback-presentation';

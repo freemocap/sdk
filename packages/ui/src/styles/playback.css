@@ -376,3 +376,11 @@ linear-gradient(to right, #3b82f6 0%, #3b82f6 var(--progress-percent), #212121 v
   min-width: 18ch;
   font-variant-numeric: tabular-nums;
 }
+
+.playback-source-switch {border: 1px solid var(--color-text-secondary, #9099aa);}
+.playback-source-switch button[aria-pressed="true"] {outline: 1px solid var(--color-primary, #9b9bfa); background: #34364c;}
+.playback-source-switch button:focus-visible {outline: 2px solid #c6c8ff; outline-offset: 2px;}
+.playback-target-closeup {position:absolute; bottom:6px; right:6px; height:min(116px, 27%); width:min(42%, 220px); pointer-events:none; border:1px solid #8f94a6; border-radius:4px; background:#08090c; overflow:hidden;}
+.playback-target-closeup canvas {width:100%; height:calc(100% - 20px); object-fit:contain; display:block;}
+.playback-target-closeup figcaption {height:20px; font-size:11px; color:#d3d5df; text-align:center;}
+.playback-target-closeup:has(canvas[data-crop-status="unavailable"]) figcaption::after {content:" unavailable";}
