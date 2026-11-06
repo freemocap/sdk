@@ -1,6 +1,7 @@
 import {useState,useRef,useLayoutEffect,useMemo,useEffect,type KeyboardEvent,type ReactNode} from 'react';
 import ButtonSm from '../components/ui-components/ButtonSm';
 import SubactionHeader from '../components/ui-components/SubactionHeader';
+import {AnnotationImage,ImagePreview} from './ImagePreview';
 
 export interface ImageSelectionToggleProps {
     included:boolean|null;pending?:boolean;disabled?:boolean;error?:string;onToggle:()=>void;label?:string;
@@ -25,7 +26,10 @@ export interface ImageCatalogNavigation {
     mode:'included'|'generated';onModeChange:(mode:'included'|'generated')=>void;
     previousId?:string;nextId?:string;pending?:boolean;
 }
-export type DatasetImageItem=Omit<ImageCatalogItem,'included'> & {facts?:ReactNode;removed?:boolean};
+export type DatasetImageItem=Omit<ImageCatalogItem,'included'> & {
+    facts?:ReactNode;removed?:boolean;
+    rawThumbnailUrl?:string|null;fullImageUrl?:string|null;rawFullImageUrl?:string|null;
+};
 interface ImageCatalogBaseProps {
     actions?:ReactNode;
     onIncludeAll?:()=>void;includeAllPending?:boolean;includeAllDisabled?:boolean;
@@ -34,7 +38,7 @@ interface ImageCatalogBaseProps {
 }
 export type ImageCatalogProps=ImageCatalogBaseProps & (
     {mode?:'selection';items:readonly ImageCatalogItem[];onToggle:(id:string)=>void} |
-    {mode:'members';items:readonly DatasetImageItem[];onRemove:(id:string)=>void;selectedIds?:readonly string[];onSelectionChange?:(ids:string[])=>void}
+    {mode:'members';items:readonly DatasetImageItem[];onRemove:(id:string)=>void;selectedIds?:readonly string[];onSelectionChange?:(ids:string[])=>void;cardWidth?:number;showAnnotations?:boolean}
 );
 function CatalogThumbnail({src,label}:{src:string|null;label:string}) {
     const [failed,setFailed]=useState<string|null>(null);
@@ -112,22 +116,34 @@ export function ImageCatalog(props:ImageCatalogProps) {
 }
 
 /** Membership and bulk action selection are controlled independently by the application. */
-function MemberImageCatalog({items,activeId,onNavigate,onRemove,pending,error,actions,selectedIds=[],onSelectionChange}:Extract<ImageCatalogProps,{mode:'members'}>){
+function MemberImageCatalog({items,activeId,onNavigate,onRemove,pending,error,actions,selectedIds=[],onSelectionChange,cardWidth=176,showAnnotations=true}:Extract<ImageCatalogProps,{mode:'members'}>){
     const scroll=useRef<HTMLDivElement>(null);
+    const [preview,setPreview]=useState<DatasetImageItem|null>(null);
     const [viewport,setViewport]=useState({width:400,height:600,top:0});
-    const columns=Math.max(1,Math.floor((viewport.width+8)/120));
-    const rowHeight=276;
+    const desiredWidth=Number.isFinite(cardWidth)?Math.max(112,Math.min(640,cardWidth)):176;
+    const columns=Math.max(1,Math.floor((viewport.width+8)/(desiredWidth+8)));
+    const [imageAspects,setImageAspects]=useState<Map<string,number>>(new Map());
+    const [captionSizes,setCaptionSizes]=useState<{width:number;heights:Map<string,number>}>({width:0,heights:new Map()});
+    const cellWidth=(viewport.width-8*(columns-1))/columns;
+    const imageHeightFor=(item:DatasetImageItem)=>Math.round(Math.max(1,cellWidth)/(imageAspects.get(item.thumbnailUrl??'')??(4/3)));
     const rows=Math.ceil(items.length/columns);
-    const firstRow=Math.max(0,Math.floor(viewport.top/rowHeight)-2);
-    const lastRow=Math.min(rows,Math.ceil((viewport.top+viewport.height)/rowHeight)+2);
+    const rowTops=[0];
+    for(let row=0;row<rows;row++) {
+        let height=0;
+        for(let col=0;col<columns;col++) {const item=items[row*columns+col];if(item)height=Math.max(height,imageHeightFor(item)+(captionSizes.width===cellWidth?(captionSizes.heights.get(item.id)??66):66));}
+        rowTops.push(rowTops[row]+height+10);
+    }
+    const rowAt=(top:number)=>{let lo=0,hi=rows;while(lo<hi){const mid=Math.floor((lo+hi+1)/2);if(rowTops[mid]<=top)lo=mid;else hi=mid-1;}return Math.min(Math.max(0,rows-1),lo);};
+    const firstRow=Math.max(0,rowAt(viewport.top)-2);
+    const lastRow=Math.min(rows,rowAt(viewport.top+viewport.height)+3);
     const visible=items.slice(firstRow*columns,lastRow*columns);
     const selected=useMemo(()=>new Set(selectedIds),[selectedIds]);
     const lastSelected=useRef<string|null>(null);
-    const anchor=useRef<{ids:readonly string[];index:number;offset:number}>({ids:[],index:0,offset:0});
+    const anchor=useRef<{ids:readonly string[];index:number;offset:number;columns:number;tops:number[]}>({ids:[],index:0,offset:0,columns,tops:[]});
     const ids=useMemo(()=>items.map(item=>item.id),[items]);
     const remember=()=>{
-        const top=scroll.current?.scrollTop??0;const index=Math.floor(top/rowHeight)*columns;
-        anchor.current={ids,index,offset:top-Math.floor(index/columns)*rowHeight};
+        const top=scroll.current?.scrollTop??0;const row=rowAt(top),index=row*columns;
+        anchor.current={ids,index,offset:top-rowTops[row],columns,tops:rowTops};
     };
     useLayoutEffect(()=>{
         const element=scroll.current;if(!element)return;
@@ -137,16 +153,30 @@ function MemberImageCatalog({items,activeId,onNavigate,onRemove,pending,error,ac
     useLayoutEffect(()=>{
         const element=scroll.current;if(!element)return;
         const old=anchor.current;
-        if(old.ids!==ids&&old.ids.length){
+        if(old.ids.length){
             const positions=new Map(ids.map((id,index)=>[id,index]));
             let next=-1;
             for(let i=old.index;i<old.ids.length&&next<0;i++)next=positions.get(old.ids[i])??-1;
             if(next<0)for(let i=Math.min(old.index-1,old.ids.length-1);i>=0&&next<0;i--)next=positions.get(old.ids[i])??-1;
-            element.scrollTop=next<0?0:Math.floor(next/columns)*rowHeight+old.offset;
+            const row=Math.floor(next/columns);
+            element.scrollTop=next<0?0:rowTops[row]+Math.min(old.offset,rowTops[row+1]-rowTops[row]-1);
             setViewport(v=>({...v,top:element.scrollTop}));
         }
         remember();
-    },[ids,columns]);
+    },[ids,columns,cellWidth,imageAspects,captionSizes]);
+    const visibleKey=visible.map(item=>item.id).join('\u0000');
+    useLayoutEffect(()=>{
+        const element=scroll.current;if(!element)return;
+        const measure=()=>{
+            const measured=[...element.querySelectorAll<HTMLElement>('.sdk-image-card-body')].map(body=>[body.closest<HTMLElement>('[data-image-id]')!.dataset.imageId!,Math.ceil(body.getBoundingClientRect().height)] as const);
+            setCaptionSizes(previous=>{
+                const heights=previous.width===cellWidth?new Map(previous.heights):new Map<string,number>();let changed=previous.width!==cellWidth;
+                for(const [id,height] of measured)if(heights.get(id)!==height){heights.set(id,height);changed=true;}
+                return changed?{width:cellWidth,heights}:previous;
+            });
+        };
+        const observer=new ResizeObserver(measure);element.querySelectorAll('.sdk-image-card-body').forEach(body=>observer.observe(body));measure();return()=>observer.disconnect();
+    },[visibleKey,cellWidth,items]);
     useEffect(()=>{
         if(!onSelectionChange||!selectedIds.length)return;
         const eligible=new Set(items.filter(item=>!item.removed).map(item=>item.id));
@@ -166,18 +196,24 @@ function MemberImageCatalog({items,activeId,onNavigate,onRemove,pending,error,ac
             {onSelectionChange&&<span>{selectedIds.length} selected</span>}</div>
         {actions&&<div className="sdk-image-catalog-actions">{actions}</div>}
         {error&&<div className="sdk-image-save-error" role="alert">{error}</div>}
-        <div ref={scroll} tabIndex={0} aria-label="Training image gallery" className="sdk-image-catalog-scroll sdk-image-virtual-scroll" onScroll={()=>{
+        <div ref={scroll} tabIndex={0} aria-label="Training image gallery" className="sdk-image-catalog-scroll sdk-image-virtual-scroll" onLoadCapture={event=>{
+            const img=event.target;if(!(img instanceof HTMLImageElement)||!img.naturalWidth||!img.naturalHeight)return;
+            const id=img.closest<HTMLElement>('[data-image-id]')?.dataset.imageId;
+            const item=items.find(item=>item.id===id);if(!item?.thumbnailUrl)return;
+            const ratio=img.naturalWidth/img.naturalHeight;
+            setImageAspects(previous=>previous.get(item.thumbnailUrl!)===ratio?previous:new Map(previous).set(item.thumbnailUrl!,ratio));
+        }} onScroll={()=>{
             remember();setViewport(v=>({...v,top:scroll.current?.scrollTop??0}));
         }}>
             {!items.length&&<div className="sdk-image-empty">No images in the training set</div>}
-            <div className="sdk-image-members-grid sdk-image-virtual-grid" style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`,gridAutoRows:rowHeight-8,
-                paddingTop:firstRow*rowHeight,paddingBottom:(rows-lastRow)*rowHeight}}>
+            <div className="sdk-image-members-grid sdk-image-virtual-grid" style={{gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`,gridTemplateRows:rowTops.slice(firstRow,lastRow).map((top,i)=>`${rowTops[firstRow+i+1]-top-8}px`).join(' '),
+                paddingTop:rowTops[firstRow],paddingBottom:rowTops[rows]-rowTops[lastRow]}}>
                 {visible.map(item=><article key={item.id}
-                    className={`sdk-image-card ${activeId===item.id?'active':''}${item.removed?' sdk-image-removed':''}`} data-image-id={item.id}
+                    className={`sdk-image-card ${activeId===item.id?'active':''}${item.removed?' sdk-image-removed':''}`} data-image-id={item.id} style={{height:'auto',maxWidth:'none'}}
                     aria-label={`${item.camera} · ${item.groupLabel}`}>
                     <button className="sdk-image-thumbnail" aria-label={`Show ${item.label}`} aria-current={activeId===item.id?'true':undefined}
-                        disabled={pending} onClick={()=>onNavigate(item.id)}>
-                        <CatalogThumbnail src={item.thumbnailUrl} label={item.label}/>
+                        disabled={pending} style={{height:imageHeightFor(item)}} onClick={()=>item.fullImageUrl?setPreview(item):onNavigate(item.id)}>
+                        {item.rawThumbnailUrl?<AnnotationImage annotatedUrl={item.thumbnailUrl} rawUrl={item.rawThumbnailUrl} label={item.label} showAnnotations={showAnnotations}/>:<CatalogThumbnail src={item.thumbnailUrl} label={item.label}/>}
                         <span className="sdk-image-camera">{item.camera}</span>
                     </button>
                     {item.removed?<span className="sdk-member-removed-label">Removed</span>:<ButtonSm text="×" buttonType="secondary btn-danger" className="sdk-member-remove"
@@ -195,5 +231,6 @@ function MemberImageCatalog({items,activeId,onNavigate,onRemove,pending,error,ac
                 </article>)}
             </div>
         </div>
+        {preview?.fullImageUrl&&<ImagePreview label={preview.label} annotatedUrl={preview.fullImageUrl} rawUrl={preview.rawFullImageUrl} showAnnotations={showAnnotations} onClose={()=>setPreview(null)}/>}
     </section>;
 }

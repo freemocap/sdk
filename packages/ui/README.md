@@ -292,9 +292,10 @@ existing pan/zoom controls rather than automatically shrinking the text.
 ### Large dataset galleries
 
 Members-mode `ImageCatalog` renders visible rows plus two overscan rows rather
-than mounting every image. Cards have bounded width and fixed row geometry;
-thumbnail loading does not move the scroll position. Surviving image IDs anchor
-the viewport when the supplied membership changes.
+than mounting every image. `cardWidth` controls the desired width (112–640 px);
+the container determines the column count. Each row uses its actual image height
+plus measured natural caption heights, without a reserved score block.
+Surviving image IDs anchor the viewport when membership, size, or columns change.
 
 Optional `selectedIds` and `onSelectionChange(ids)` control checkbox selection
 for a bulk action, independently of persisted membership. Shift-click selects a
@@ -306,6 +307,21 @@ from the member count, disables removal/selection and clears it from the bulk
 selection. The application decides when an explicit refresh drops those rows.
 Keep thumbnail URLs tied to immutable label artifacts, and memoize item
 preparation instead of rebuilding the catalog for every playback tick.
+
+For image previews, provide four matching assets per member:
+`thumbnailUrl` (annotated), `rawThumbnailUrl`, `fullImageUrl` (annotated full
+resolution), and `rawFullImageUrl`. Applications choose full-frame or target-crop
+thumbnail URLs and persist that choice, `cardWidth`, and `showAnnotations`.
+The SDK does not crop images or erase overlays. Only mounted thumbnail pairs
+load; hovering reveals the real raw counterpart and leaving restores the chosen
+annotation state. `showAnnotations` supports an application-owned keyboard/touch
+control. URL identity must include the same source version, frame, camera, and
+crop for both assets.
+
+Supplying `fullImageUrl` opts image clicks into a viewport-fitted full-image modal
+portaled to the document body. The modal has an annotation checkbox, raw hover,
+Escape/close, and focus return. Checkbox/removal actions do not open it or change
+navigation. Without `fullImageUrl`, existing `onNavigate` behavior remains.
 
 ### Spherical coverage
 

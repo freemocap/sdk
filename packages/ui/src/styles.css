@@ -140,7 +140,7 @@
 .sdk-image-virtual-grid .sdk-image-thumbnail {height:132px;}
 .sdk-image-virtual-grid .sdk-image-thumbnail img {height:100%;object-fit:contain;}
 .sdk-image-virtual-grid .sdk-image-thumbnail-unavailable {height:100%;aspect-ratio:auto;}
-.sdk-image-virtual-grid .sdk-image-card-body {max-height:134px;overflow:auto;}
+.sdk-image-virtual-grid .sdk-image-card-body {overflow:visible;}
 .sdk-member-checkbox {display:flex;align-items:center;gap:6px;cursor:pointer;}
 .sdk-member-checkbox input {width:16px;height:16px;flex-shrink:0;}
 .sdk-member-facts {display:flex;align-items:center;gap:4px;flex-wrap:wrap;font-size:11px;}
@@ -154,3 +154,9 @@
 .sdk-coverage-canvas { flex:1; min-height:160px; position:relative; }
 .sdk-coverage-canvas canvas { display:block; width:100%; height:100%; touch-action:none; }
 .sdk-coverage-canvas canvas:focus-visible { outline:2px solid var(--color-primary, #68c5ce); outline-offset:-2px; }
+.sdk-annotation-image {display:block;position:relative;width:100%;height:100%;overflow:hidden;}
+.sdk-annotation-image>img {position:absolute;inset:0;width:100%;height:100%;object-fit:contain;}
+.sdk-image-preview-controls {display:flex;align-items:center;gap:12px;padding:8px 12px;flex:none;}
+.sdk-image-preview-controls label {display:flex;align-items:center;gap:6px;}
+.sdk-pipeline-dialog:has(.sdk-image-preview-surface) {width:min(96vw,1600px);height:92vh;max-height:94vh;padding:0;overflow:hidden;}
+.sdk-image-preview-surface {flex:1;min-height:0;min-width:0;padding:8px;}
