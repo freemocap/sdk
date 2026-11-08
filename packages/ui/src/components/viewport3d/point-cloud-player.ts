@@ -23,7 +23,7 @@ export class PointCloudPlayer {
     private hiddenReason = 'no-source';
     readonly stats = {requests: 0, cacheBytes: 0, displayedFrames: 0, missingFrames: 0, fetchMs: 0,
         frameIndex: -1, sourceFrameIndex: -1, pointCount: 0, timestamp: null as number | null};
-    get diagnostics() {return {...this.stats, residentChunks: this.cache.size, inFlight: this.requests.size, status: this.status, mode: this.preload ? 'clip' : 'window', totalBytes: this.totalBytes, loadedBytes: this.stats.cacheBytes, totalChunks: this.manifest?.chunks.length ?? 0, readyMs: this.readyMs, hiddenReason: this.hiddenReason, concurrency: this.options.concurrency, maxResidentBytes: this.options.maxResidentBytes, reservedBytes: this.stats.cacheBytes + [...this.requests.keys()].reduce((sum, index) => sum + (this.manifest?.chunks[index].byte_length ?? 0), 0)};}
+    get diagnostics() {return {...this.stats, residentChunks: this.cache.size, inFlight: this.requests.size, status: this.status, mode: this.preload ? 'clip' : 'window', totalBytes: this.totalBytes, loadedBytes: this.stats.cacheBytes, totalChunks: this.manifest?.chunks.length ?? 0, readyMs: this.readyMs, hiddenReason: this.hiddenReason, concurrency: this.options.concurrency, maxResidentBytes: this.options.maxResidentBytes, reservedBytes: this.stats.cacheBytes + [...this.requests.keys()].reduce((sum, index) => sum + (this.cache.has(index) ? 0 : this.manifest?.chunks[index].byte_length ?? 0), 0)};}
     private publish(frame: CloudFrame | null, capacity: number): void {
         Object.assign(this.stats, {frameIndex: frame?.frameIndex ?? -1, sourceFrameIndex: frame?.sourceFrameIndex ?? -1,
             pointCount: (frame?.positions.length ?? 0) / 3, timestamp: frame?.timestamp ?? null});
@@ -67,7 +67,11 @@ export class PointCloudPlayer {
         const chunk = manifest.frames[index].chunk_index;
         if (!this.preload) {
             this.wanted = this.window(chunk);
-            for (const [key, request] of this.requests) if (!this.wanted.includes(key)) {request.abort(); this.requests.delete(key);}
+            const wanted = new Set(this.wanted);
+            const retained = new Set([...this.requests].filter(([index]) => wanted.has(index)).map(([, request]) => request));
+            for (const [index, request] of this.requests) {
+                if (!retained.has(request)) {request.abort(); this.requests.delete(index);}
+            }
             for (const [key, cached] of this.cache) if (!this.wanted.includes(key)) {this.cache.delete(key); this.stats.cacheBytes -= cached.bytes;}
         }
         const cached = this.cache.get(chunk);
@@ -85,6 +89,12 @@ export class PointCloudPlayer {
     }
     private window(start: number): number[] {
         const chunks = this.manifest!.chunks;
+        // Advance the read-ahead window by a batch so sequential playback can replenish it in bulk.
+        if (this.manifest!.batch_url) {
+            const aligned = start - start % Math.min(16, this.options.concurrency);
+            const required = chunks.slice(aligned, start + 1).reduce((sum, chunk) => sum + chunk.byte_length, 0);
+            if (required <= this.options.maxResidentBytes) start = aligned;
+        }
         const result: number[] = []; let bytes = 0;
         for (let count = 0; count < chunks.length; count++) {
             const index = (start + count) % chunks.length;
@@ -94,39 +104,63 @@ export class PointCloudPlayer {
         return result;
     }
     private pump(): void {
-        for (const index of this.wanted) {
-            if (this.requests.size >= this.options.concurrency) break;
-            if (!this.cache.has(index) && !this.requests.has(index) && !this.failed.has(index)) this.load(index);
+        const manifest = this.manifest;
+        if (!manifest) return;
+        const pending = this.wanted.filter(index => !this.cache.has(index) && !this.requests.has(index) && !this.failed.has(index));
+        for (let offset = 0; offset < pending.length && this.requests.size < this.options.concurrency;) {
+            const group = [pending[offset++]];
+            const limit = manifest.batch_url ? Math.min(16, this.options.concurrency - this.requests.size) : 1;
+            while (group.length < limit && pending[offset] === group[group.length - 1] + 1) group.push(pending[offset++]);
+            this.load(group);
         }
     }
-    private load(index: number): void {
+    private load(indices: number[]): void {
         const manifest = this.manifest!;
-        if (this.requests.size >= this.options.concurrency) return;
         const request = new AbortController(), generation = this.generation;
-        this.requests.set(index, request); this.stats.requests++;
+        for (const index of indices) this.requests.set(index, request);
+        this.stats.requests++;
         const start = performance.now();
         void (async () => {
-            const spec = manifest.chunks[index];
-            const response = await this.fetcher(new URL(spec.url, this.baseUrl), {signal: request.signal});
+            const url = new URL(manifest.batch_url ?? manifest.chunks[indices[0]].url, this.baseUrl);
+            if (manifest.batch_url) {
+                url.searchParams.set('first', String(indices[0]));
+                url.searchParams.set('count', String(indices.length));
+            }
+            const response = await this.fetcher(url, {signal: request.signal});
             if (!response.ok || !response.body) throw new Error(`Cloud chunk request failed: ${response.status}`);
             if (request.signal.aborted || generation !== this.generation) {await response.body.cancel(); return;}
-            // Stream into exactly the declared allocation; reject excess bytes before buffering them.
-            const bytes = new Uint8Array(spec.byte_length), reader = response.body.getReader();
-            let offset = 0;
+            const reader = response.body.getReader();
+            let remaining: Uint8Array = new Uint8Array(0);
             try {
-                for (;;) {const result = await reader.read(); if (result.done) break;
-                    if (offset + result.value.length > bytes.length) throw new Error('Cloud response exceeds declared length');
-                    bytes.set(result.value, offset); offset += result.value.length;}
+                for (const index of indices) {
+                    const bytes = new Uint8Array(manifest.chunks[index].byte_length);
+                    let offset = 0;
+                    while (offset < bytes.length) {
+                        if (!remaining.length) {
+                            const result = await reader.read();
+                            if (result.done) throw new Error('Truncated cloud response');
+                            remaining = result.value;
+                        }
+                        const length = Math.min(remaining.length, bytes.length - offset);
+                        bytes.set(remaining.subarray(0, length), offset);
+                        offset += length;
+                        remaining = remaining.subarray(length);
+                    }
+                    if (request.signal.aborted || generation !== this.generation) return;
+                    const frames = decodeCloudChunk(bytes.buffer, manifest, index);
+                    if (this.preload || this.wanted.includes(index)) {
+                        this.cache.set(index, {frames, bytes: bytes.length});
+                        this.stats.cacheBytes += bytes.length;
+                    }
+                }
+                if (remaining.length || !(await reader.read()).done) throw new Error('Cloud response exceeds declared length');
             } finally {await reader.cancel(); reader.releaseLock();}
             if (request.signal.aborted || generation !== this.generation) return;
-            if (offset !== bytes.length) throw new Error('Truncated cloud response');
-            const frames = decodeCloudChunk(bytes.buffer, manifest, index);
-            this.cache.set(index, {frames, bytes: bytes.length}); this.stats.cacheBytes += bytes.length;
             this.stats.fetchMs += performance.now() - start;
             if (this.preload && this.cache.size === manifest.chunks.length) {this.status = 'ready'; this.readyMs = performance.now() - this.started;}
             else if (!this.preload && !this.failed.size) this.status = 'ready';
-        })().catch(error => {if (!request.signal.aborted && generation === this.generation) {this.failed.add(index); this.status = 'error'; this.error(error as Error);}})
-            .finally(() => {if (this.requests.get(index) === request) this.requests.delete(index);
+        })().catch(error => {if (!request.signal.aborted && generation === this.generation) {for (const index of indices) this.failed.add(index); this.status = 'error'; this.error(error as Error);}})
+            .finally(() => {for (const index of indices) if (this.requests.get(index) === request) this.requests.delete(index);
                 if (!request.signal.aborted && generation === this.generation) {this.update(this.clock); this.pump();}});
     }
     close(): void {

@@ -4,8 +4,8 @@ import {CloudManifestSchema, decodeCloudChunk, type CloudFrame} from './point-cl
 import {PointCloudPlayer} from './point-cloud-player';
 
 const reference = {id: 'scene', definition: {name: 'scene', basis: 'blender_x_right_y_forward_z_up' as const, units: 'mm' as const}};
-function fixture() {
-    const buffers = Array.from({length: 8}, (_, index) => {
+function fixture(count = 8) {
+    const buffers = Array.from({length: count}, (_, index) => {
         const header = new TextEncoder().encode(JSON.stringify({schema_version: 1, revision: 'r1', reference_frame: reference,
             frames: [{frame_index: index, source_frame_index: 90 + index, timestamp_s: index, timestamp_ns: String(1000000000 + index),
                 point_count: 1, positions_offset: 0, colors_offset: 12}]}));
@@ -102,4 +102,29 @@ test('closing preload rejects late responses and releases retained storage', asy
     player.update(0); player.close(); pending.forEach((resolve, index) => resolve(new Response(buffers[index]))); await flush();
     assert.equal(shown, null); assert.equal(player.diagnostics.cacheBytes, 0);
     assert.equal(player.diagnostics.status, 'idle'); assert.equal(player.diagnostics.inFlight, 0);
+});
+
+test('95 published chunks load in six batches and later seeks use resident frames', async () => {
+    const {manifest, buffers} = fixture(95);
+    const ranges: number[] = [];
+    const errors: Error[] = [];
+    let shown: CloudFrame | null = null;
+    const player = new PointCloudPlayer(frame => {shown = frame;}, error => errors.push(error), async input => {
+        const url = new URL(String(input));
+        if (url.pathname === '/manifest.json') return Response.json({...manifest, batch_url: 'batch'});
+        assert.equal(url.pathname, '/batch');
+        const first = Number(url.searchParams.get('first')), count = Number(url.searchParams.get('count'));
+        ranges.push(count);
+        return new Response(new Blob(buffers.slice(first, first + count)));
+    });
+    await player.open('http://local/manifest.json', reference);
+    for (let i = 0; i < 100 && player.diagnostics.status === 'loading'; i++) await flush();
+    assert.deepEqual(errors, []);
+    assert.equal(player.diagnostics.status, 'ready');
+    for (const index of [94, 0, 30]) {
+        player.update(index);
+        assert.equal((shown as CloudFrame | null)?.frameIndex, index);
+    }
+    assert.deepEqual(ranges, [16, 16, 16, 16, 16, 15]);
+    player.close();
 });

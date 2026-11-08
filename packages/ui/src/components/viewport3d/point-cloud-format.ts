@@ -11,6 +11,7 @@ const FrameIdentity = z.object({frame_index: z.number().int().nonnegative(), sou
 export const CloudManifestSchema = z.object({schema_version: z.literal(1), revision: z.string().min(1),
     reference_frame: CloudReferenceSchema, max_points: z.number().int().positive().max(60000),
     frames: z.array(FrameIdentity.extend({chunk_index: z.number().int().nonnegative()})).min(1).max(100000),
+    batch_url: z.string().min(1).optional(),
     chunks: z.array(z.object({url: z.string().min(1), byte_length: z.number().int().positive().max(16 * 1024 * 1024)})).min(1),
 }).superRefine((value, context) => {
     value.frames.forEach((frame, index) => {
