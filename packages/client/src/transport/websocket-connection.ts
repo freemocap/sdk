@@ -181,12 +181,13 @@ export class WebSocketConnection {
     private scheduleReconnect(): void {
         if (this.disconnectRequested || this.reconnectTimer) return;
 
-        this.setState(ConnectionState.RECONNECTING);
         this.reconnectTimer = (typeof window === "undefined" ? globalThis : window).setTimeout(() => {
             this.reconnectTimer = null;
             this.setState(ConnectionState.DISCONNECTED);
             this.connect();
         }, this.config.reconnectDelay);
+        // Observers can disconnect synchronously and must be able to cancel the pending retry.
+        this.setState(ConnectionState.RECONNECTING);
     }
 
     private startHeartbeat(): void {

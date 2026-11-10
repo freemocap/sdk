@@ -58,3 +58,26 @@ test('a socket that cannot be created is reported, then retried',()=>{
  connection.connect();
  assert.equal(errors[0]?.message,'bad socket URL');assert.equal(connection.getState(),'RECONNECTING');connection.disconnect();
 });
+
+test('disconnecting from the reconnecting state notification cancels the pending retry', async () => {
+ const attempts = [];
+ const connection = new WebSocketConnection({
+  url: 'ws://server.invalid/stream',
+  reconnectDelay: 1,
+  socketFactory: url => {
+   attempts.push(url);
+   throw new Error('offline');
+  },
+ });
+ connection.on('state-change', state => {
+  if (state === 'RECONNECTING') connection.disconnect();
+ });
+ try {
+  connection.connect();
+  await new Promise(resolve => setTimeout(resolve, 20));
+  assert.equal(attempts.length, 1);
+  assert.equal(connection.getState(), 'DISCONNECTED');
+ } finally {
+  connection.disconnect();
+ }
+});
