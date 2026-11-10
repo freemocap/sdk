@@ -22,6 +22,8 @@ The local file dependency is the fast development path; installation from a tarb
 
 `packages/server` is the Python distribution `freemocap-sdk-server`. Install with `uv sync --frozen --group dev` in that package, or declare it as a local editable dependency in an application environment. Its public imports are `freemocap_sdk.server` and `freemocap_sdk.stream`. The server factory accepts routers, lifespan and WebSocket handler; it does not provide Core domain routes. The committed lockfile pins its isolated validation environment.
 
+For a stream-only producer, install `packages/stream` with pip or uv. Its distribution is `freemocap-sdk-stream` and its public import is `freemocap_sdk.stream`. Its runtime requirements are cbor2 and NumPy. For a Git pin, use `freemocap-sdk-stream @ git+https://github.com/freemocap/sdk.git@<commit>#subdirectory=packages/stream` with a commit available on that remote. For offline deployment, build a wheel from the same revision. The full server depends on this distribution. Its uv project resolves the sibling checkout. When installing the full SDK from source with pip before registry publication, pass both `./packages/stream` and `./packages/server` in one install command.
+
 The initial acceptance target is an honest empty playback shell in a standalone Tauri desktop application, with HTTP/WebSocket/image transport and owned backend startup/shutdown. Browser checks support that validation but cannot substitute for a built desktop launch. Loading real recordings additionally requires application recording resource endpoints and dataset validation; an empty shell is not evidence that recording playback works.
 
 ## Desktop packaging
